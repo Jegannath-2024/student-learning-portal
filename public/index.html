@@ -35,30 +35,41 @@
 
       <!-- Action Items & User Profile Badge -->
       <div class="header-actions">
-        <!-- Quick Role Switcher Button -->
-        <button class="btn-switch-role" id="btn-quick-switch-role" title="Switch between Student and Faculty View">
-          <span>🔄</span>
-          <span id="quick-switch-label">Switch to Faculty</span>
-        </button>
-
         <!-- Theme Toggle -->
         <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle Dark/Light Mode">
           <span id="theme-toggle-icon">🌙</span>
         </button>
 
-        <!-- Current User Profile Pill -->
-        <div class="student-badge-btn" id="user-profile-pill" title="View Profile">
-          <img class="student-badge-avatar" id="header-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="User Avatar">
-          <div style="display:flex; flex-direction:column; text-align:left;">
-            <span class="student-badge-name" id="header-user-name">Alex Sterling</span>
-            <span class="user-role-chip role-student" id="header-role-badge">Student</span>
-          </div>
+        <!-- Unauthenticated Header Group (Shown when signed out) -->
+        <div id="header-unauth-group" style="display:flex; align-items:center; gap:8px;">
+          <button class="btn-primary" id="btn-header-login-page" style="padding:8px 16px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <span>🔐</span>
+            <span>Sign In / Register</span>
+          </button>
         </div>
 
-        <!-- Sign In / Switch Account Button -->
-        <button class="btn-secondary" id="btn-open-auth-modal" style="padding:7px 12px; font-size:12px;">
-          Account
-        </button>
+        <!-- Authenticated Header Group (Shown when signed in) -->
+        <div id="header-auth-group" style="display:none; align-items:center; gap:10px;">
+          <!-- Quick Role Switcher Button -->
+          <button class="btn-switch-role" id="btn-quick-switch-role" title="Switch between Student and Faculty View">
+            <span>🔄</span>
+            <span id="quick-switch-label">Switch to Faculty</span>
+          </button>
+
+          <!-- Current User Profile Pill -->
+          <div class="student-badge-btn" id="user-profile-pill" title="View Profile">
+            <img class="student-badge-avatar" id="header-avatar" src="" alt="User Avatar">
+            <div style="display:flex; flex-direction:column; text-align:left;">
+              <span class="student-badge-name" id="header-user-name"></span>
+              <span class="user-role-chip" id="header-role-badge"></span>
+            </div>
+          </div>
+
+          <!-- Header Direct Sign Out Button -->
+          <button class="btn-secondary" id="btn-header-signout" title="Sign out of portal session" style="padding:7px 12px; font-size:12px; color:var(--danger, #ef4444); border-color:var(--border-color);">
+            🚪 Sign Out
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -69,37 +80,42 @@
   <nav class="nav-bar">
     <div class="container">
       <ul class="nav-tabs" id="portal-nav-tabs">
-        <li class="nav-tab-item">
-          <button class="nav-tab-btn active" data-view="view-catalog" id="nav-btn-catalog">
+        <li class="nav-tab-item" id="nav-item-auth">
+          <button class="nav-tab-btn active" data-view="view-auth" id="nav-btn-auth">
+            <span>🔐 Portal Gateway</span>
+          </button>
+        </li>
+        <li class="nav-tab-item" id="nav-item-catalog">
+          <button class="nav-tab-btn" data-view="view-catalog" id="nav-btn-catalog">
             <span>📚 Course Catalog</span>
           </button>
         </li>
-        <li class="nav-tab-item" id="nav-item-dashboard">
+        <li class="nav-tab-item" id="nav-item-dashboard" style="display:none;">
           <button class="nav-tab-btn" data-view="view-dashboard" id="nav-btn-dashboard">
             <span>📊 Student Dashboard</span>
           </button>
         </li>
-        <li class="nav-tab-item" id="nav-item-faculty">
-          <button class="nav-tab-btn" data-view="view-faculty" id="nav-btn-faculty" style="display:none;">
+        <li class="nav-tab-item" id="nav-item-faculty" style="display:none;">
+          <button class="nav-tab-btn" data-view="view-faculty" id="nav-btn-faculty">
             <span>🏫 Faculty Studio</span>
           </button>
         </li>
-        <li class="nav-tab-item">
+        <li class="nav-tab-item" id="nav-item-classroom">
           <button class="nav-tab-btn" data-view="view-classroom" id="nav-btn-classroom">
             <span>💻 Course Classroom</span>
           </button>
         </li>
-        <li class="nav-tab-item">
+        <li class="nav-tab-item" id="nav-item-curriculum">
           <button class="nav-tab-btn" data-view="view-curriculum" id="nav-btn-curriculum">
             <span>📜 Curriculum Specification</span>
           </button>
         </li>
-        <li class="nav-tab-item" id="nav-item-academic">
+        <li class="nav-tab-item" id="nav-item-academic" style="display:none;">
           <button class="nav-tab-btn" data-view="view-academic" id="nav-btn-academic">
             <span>🏛️ Transcripts &amp; Records</span>
           </button>
         </li>
-        <li class="nav-tab-item">
+        <li class="nav-tab-item" id="nav-item-profile" style="display:none;">
           <button class="nav-tab-btn" data-view="view-profile" id="nav-btn-profile">
             <span>⚙️ Profile Settings</span>
           </button>
@@ -113,8 +129,136 @@
        ========================================== -->
   <main class="container">
 
+    <!-- VIEW 0: Dedicated Authentication & Login Gateway (Student & Faculty) -->
+    <section id="view-auth" class="view-section active">
+      <div class="auth-gateway-wrapper">
+        <div class="auth-gateway-card">
+          <!-- Gateway Header -->
+          <div class="auth-gateway-header">
+            <div class="auth-gateway-emblem">🎓</div>
+            <h2>EduSphere Academic Gateway</h2>
+            <p>Secure Institutional Single Sign-On for Students &amp; Faculty</p>
+          </div>
+
+          <!-- Gateway Nav Tabs -->
+          <div class="auth-gateway-tabs">
+            <button type="button" class="auth-gateway-tab-btn active" data-gateway-tab="tab-student" id="gateway-tab-student">
+              <span>🎓</span> Student Login
+            </button>
+            <button type="button" class="auth-gateway-tab-btn" data-gateway-tab="tab-faculty" id="gateway-tab-faculty">
+              <span>👩‍🏫</span> Faculty Login
+            </button>
+            <button type="button" class="auth-gateway-tab-btn" data-gateway-tab="tab-register" id="gateway-tab-register">
+              <span>✨</span> Register Account
+            </button>
+          </div>
+
+          <!-- Panel 1: Student Login -->
+          <div class="auth-gateway-panel active" id="panel-gateway-student">
+            <div class="gateway-panel-heading">
+              <h3>Student Portal Access</h3>
+              <p>Sign in to view your learning dashboard, stream lecture modules, and view accredited transcripts.</p>
+            </div>
+
+            <form id="gateway-form-student">
+              <div class="form-group">
+                <label for="gateway-student-email">Student Email Address</label>
+                <input type="email" id="gateway-student-email" placeholder="e.g. student@edusphere.edu or registered email" required autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="gateway-student-password">Password</label>
+                <input type="password" id="gateway-student-password" placeholder="Enter student password" required autocomplete="current-password">
+              </div>
+              <button type="submit" class="btn-primary" style="width:100%; padding:12px; font-size:15px; font-weight:700; margin-top:8px;">
+                Sign In to Student Portal →
+              </button>
+            </form>
+
+            <div class="auth-demo-hint-box">
+              <div class="hint-title">
+                <span>⚡</span>
+                <span>Demo Student Quick Access:</span>
+              </div>
+              <button type="button" class="btn-demo-pill" id="btn-fill-demo-student">
+                🎓 Fill Demo Student Credentials (student@edusphere.edu / password123)
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel 2: Faculty Login -->
+          <div class="auth-gateway-panel" id="panel-gateway-faculty">
+            <div class="gateway-panel-heading">
+              <h3>Faculty Studio Access</h3>
+              <p>Sign in to author accredited courses, manage curriculum modules, upload video lectures, and supervise cohorts.</p>
+            </div>
+
+            <form id="gateway-form-faculty">
+              <div class="form-group">
+                <label for="gateway-faculty-email">Faculty Institutional Email</label>
+                <input type="email" id="gateway-faculty-email" placeholder="e.g. faculty@edusphere.edu" required autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="gateway-faculty-password">Password</label>
+                <input type="password" id="gateway-faculty-password" placeholder="Enter faculty password" required autocomplete="current-password">
+              </div>
+              <button type="submit" class="btn-primary" style="width:100%; padding:12px; font-size:15px; font-weight:700; margin-top:8px; background:#d97706;">
+                Sign In to Faculty Studio →
+              </button>
+            </form>
+
+            <div class="auth-demo-hint-box">
+              <div class="hint-title">
+                <span>⚡</span>
+                <span>Demo Faculty Quick Access:</span>
+              </div>
+              <button type="button" class="btn-demo-pill" id="btn-fill-demo-faculty">
+                👩‍🏫 Fill Demo Faculty Credentials (faculty@edusphere.edu / password123)
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel 3: Register Account -->
+          <div class="auth-gateway-panel" id="panel-gateway-register">
+            <div class="gateway-panel-heading">
+              <h3>Create New Academic Account</h3>
+              <p>Register a fresh student or faculty account. Newly registered accounts start from a clean zero-state.</p>
+            </div>
+
+            <form id="gateway-form-register">
+              <div class="form-group">
+                <label for="gateway-reg-name">Full Legal Name</label>
+                <input type="text" id="gateway-reg-name" placeholder="e.g. Jegannath G" required>
+              </div>
+              <div class="form-group">
+                <label for="gateway-reg-email">Institutional Email</label>
+                <input type="email" id="gateway-reg-email" placeholder="e.g. student@university.edu" required>
+              </div>
+              <div class="form-group">
+                <label for="gateway-reg-role">Account Type</label>
+                <select id="gateway-reg-role" required>
+                  <option value="student">Student Account (Clean 0-State Dashboard)</option>
+                  <option value="faculty">Faculty Instructor Account</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="gateway-reg-dept">Academic Department / Major</label>
+                <input type="text" id="gateway-reg-dept" placeholder="e.g. Computer Science & Engineering" required>
+              </div>
+              <div class="form-group">
+                <label for="gateway-reg-password">Password</label>
+                <input type="password" id="gateway-reg-password" placeholder="Create your account password" required autocomplete="new-password">
+              </div>
+              <button type="submit" class="btn-primary" style="width:100%; padding:12px; font-size:15px; font-weight:700; margin-top:8px; background:#059669;">
+                Create Account &amp; Sign In →
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- VIEW 1: Course Catalog (All Users) -->
-    <section id="view-catalog" class="view-section active">
+    <section id="view-catalog" class="view-section">
       <div class="section-header">
         <div>
           <h2>Academic Course Catalog</h2>
@@ -432,14 +576,14 @@
 
       <div class="profile-card">
         <div class="profile-avatar-row">
-          <img class="profile-avatar-large" id="profile-card-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Profile Picture">
+          <img class="profile-avatar-large" id="profile-card-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" alt="Profile Picture">
           <div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <h3 id="display-student-name" style="font-size:20px; font-weight:700;">Alex Sterling</h3>
+              <h3 id="display-student-name" style="font-size:20px; font-weight:700;">Student Learner</h3>
               <span class="user-role-chip role-student" id="profile-role-badge">Student</span>
             </div>
-            <p id="display-student-major" style="font-size:14px; color:var(--text-muted);">Computer Science &amp; Engineering</p>
-            <span style="font-size:12px; font-family:monospace; color:var(--primary); font-weight:600;" id="display-user-id">ID: usr-student-1</span>
+            <p id="display-student-major" style="font-size:14px; color:var(--text-muted);"></p>
+            <span style="font-size:12px; font-family:monospace; color:var(--primary); font-weight:600;" id="display-user-id"></span>
           </div>
         </div>
 

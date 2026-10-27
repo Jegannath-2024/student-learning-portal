@@ -397,7 +397,7 @@ class DomRenderer {
     btnDetails.addEventListener('click', () => onViewDetails(course));
     actionsWrap.appendChild(btnDetails);
 
-    if (currentUser.role === 'student') {
+    if (!currentUser || currentUser.role === 'student') {
       const btnEnroll = document.createElement('button');
       btnEnroll.className = 'btn-primary';
       btnEnroll.textContent = 'Enroll';
@@ -579,7 +579,7 @@ class StudentPortalApp {
     this.currentUser = this.loadStoredUser();
     this.service = new CourseService(() => ({
       'Content-Type': 'application/json',
-      'x-user-id': this.currentUser.id
+      'x-user-id': this.currentUser ? this.currentUser.id : ''
     }));
     this.analytics = new LearningAnalyticsEngine('analyticsCanvas');
     this.courses = [];
@@ -595,23 +595,13 @@ class StudentPortalApp {
     try {
       const stored = localStorage.getItem('edusphere_session');
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.id && parsed.role) {
+          return parsed;
+        }
       }
     } catch (e) {}
-
-    // Exactly 1 student default
-    return {
-      id: "usr-student-1",
-      name: "Alex Sterling",
-      email: "student@edusphere.edu",
-      role: "student",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
-      title: "Undergraduate Scholar",
-      departmentOrMajor: "Computer Science & Engineering",
-      bio: "Honors student studying advanced web engineering, cloud computing, and distributed database architectures.",
-      learningGoals: "Complete certified technical milestones and software architecture competencies.",
-      officeHours: "N/A"
-    };
+    return null;
   }
 
   saveSession(user) {
@@ -619,20 +609,94 @@ class StudentPortalApp {
     localStorage.setItem('edusphere_session', JSON.stringify(user));
     this.service = new CourseService(() => ({
       'Content-Type': 'application/json',
-      'x-user-id': this.currentUser.id
+      'x-user-id': this.currentUser ? this.currentUser.id : ''
     }));
     this.updateUserUI();
+  }
+
+  handleSignOut() {
+    localStorage.removeItem('edusphere_session');
+    this.currentUser = null;
+    this.enrollments = [];
+    this.updateUserUI();
+    this.showToast('You have signed out of your portal session.', 'info');
+    this.switchView('view-auth');
   }
 
   async init() {
     this.bindEvents();
     this.initTheme();
     this.updateUserUI();
-    await this.loadInitialData();
+
+    if (this.currentUser) {
+      this.switchView(this.currentUser.role === 'faculty' ? 'view-faculty' : 'view-dashboard');
+      await this.loadInitialData();
+    } else {
+      this.switchView('view-auth');
+      try {
+        const coursesRes = await this.service.fetchCourses();
+        this.courses = coursesRes.data || [];
+        this.renderCourses(this.courses);
+      } catch (e) {}
+    }
   }
 
   updateUserUI() {
     const user = this.currentUser;
+    const headerAuth = document.getElementById('header-auth-group');
+    const headerUnauth = document.getElementById('header-unauth-group');
+
+    // Context-Aware navigation elements
+    const navAuth = document.getElementById('nav-item-auth');
+    const navDashboard = document.getElementById('nav-item-dashboard');
+    const navFaculty = document.getElementById('nav-item-faculty');
+    const navAcademic = document.getElementById('nav-item-academic');
+    const navProfile = document.getElementById('nav-item-profile');
+    const catalogBanner = document.getElementById('catalog-faculty-banner');
+    const classroomFacultyWrap = document.getElementById('classroom-faculty-add-module-wrap');
+    const schemaCard = document.getElementById('schema-validation-card');
+    const curriculumGrid = document.querySelector('.curriculum-grid');
+
+    if (!user) {
+      // Unauthenticated State: No dummy credentials or avatar
+      if (headerAuth) headerAuth.style.display = 'none';
+      if (headerUnauth) headerUnauth.style.display = 'flex';
+
+      if (navAuth) navAuth.style.display = 'block';
+      if (navDashboard) navDashboard.style.display = 'none';
+      if (navFaculty) navFaculty.style.display = 'none';
+      if (navAcademic) navAcademic.style.display = 'none';
+      if (navProfile) navProfile.style.display = 'none';
+      if (catalogBanner) catalogBanner.style.display = 'none';
+      if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'none';
+      if (schemaCard) schemaCard.style.display = 'none';
+      if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = '1fr';
+
+      // Clear profile form inputs & displayed identity
+      const nameInput = document.getElementById('profile-name-input');
+      const emailInput = document.getElementById('profile-email-input');
+      const displayName = document.getElementById('display-student-name');
+      const displayMajor = document.getElementById('display-student-major');
+      const displayId = document.getElementById('display-user-id');
+      const cardAvatar = document.getElementById('profile-card-avatar');
+      if (nameInput) nameInput.value = '';
+      if (emailInput) emailInput.value = '';
+      if (displayName) displayName.textContent = 'Not Signed In';
+      if (displayMajor) displayMajor.textContent = '';
+      if (displayId) displayId.textContent = '';
+      if (cardAvatar) {
+        cardAvatar.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="%2394a3b8"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+      }
+
+      this.populateProfileForm();
+      return;
+    }
+
+    // Authenticated State
+    if (headerAuth) headerAuth.style.display = 'flex';
+    if (headerUnauth) headerUnauth.style.display = 'none';
+    if (navAuth) navAuth.style.display = 'none';
+
     const isFaculty = user.role === 'faculty';
 
     // Header identity
@@ -640,7 +704,7 @@ class StudentPortalApp {
     if (nameEl) nameEl.textContent = user.name;
 
     const avatarEl = document.getElementById('header-avatar');
-    if (avatarEl) avatarEl.src = user.avatar;
+    if (avatarEl) avatarEl.src = user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
 
     const badgeEl = document.getElementById('header-role-badge');
     if (badgeEl) {
@@ -653,13 +717,6 @@ class StudentPortalApp {
       switchLabel.textContent = isFaculty ? 'Switch to Student' : 'Switch to Faculty';
     }
 
-    // Context-Aware navigation visibility
-    const navDashboard = document.getElementById('nav-item-dashboard');
-    const navFaculty = document.getElementById('nav-item-faculty');
-    const navAcademic = document.getElementById('nav-item-academic'); // Transcripts & Records
-    const catalogBanner = document.getElementById('catalog-faculty-banner');
-    const classroomFacultyWrap = document.getElementById('classroom-faculty-add-module-wrap');
-
     if (isFaculty) {
       if (navDashboard) navDashboard.style.display = 'none';
       if (navAcademic) navAcademic.style.display = 'none'; // REMOVE TRANSCRIPTS FROM FACULTY LOGIN
@@ -667,42 +724,35 @@ class StudentPortalApp {
         navFaculty.style.display = 'block';
         navFaculty.querySelector('button').style.display = 'flex';
       }
+      if (navProfile) navProfile.style.display = 'block';
       if (catalogBanner) catalogBanner.style.display = 'block';
       if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'block';
+      if (schemaCard) schemaCard.style.display = 'block';
+      if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(340px, 1fr))';
     } else {
       if (navDashboard) navDashboard.style.display = 'block';
       if (navAcademic) navAcademic.style.display = 'block'; // Show Transcripts only for student
       if (navFaculty) navFaculty.style.display = 'none';
+      if (navProfile) navProfile.style.display = 'block';
       if (catalogBanner) catalogBanner.style.display = 'none';
       if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'none';
-    }
-
-    // Hide schema validation suite on student page
-    const schemaCard = document.getElementById('schema-validation-card');
-    const curriculumGrid = document.querySelector('.curriculum-grid');
-    if (schemaCard) {
-      if (!isFaculty) {
-        schemaCard.style.display = 'none';
-        if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = '1fr';
-      } else {
-        schemaCard.style.display = 'block';
-        if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(340px, 1fr))';
-      }
+      if (schemaCard) schemaCard.style.display = 'none';
+      if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = '1fr';
     }
 
     // Dynamically update degree certificate & transcript download links with current student name
     const certLink = document.getElementById('link-view-certificate');
     if (certLink) {
-      const studentName = encodeURIComponent(user.name || 'Alex Sterling');
-      const userId = encodeURIComponent(user.id || 'usr-student-1');
+      const studentName = encodeURIComponent(user.name || '');
+      const userId = encodeURIComponent(user.id || '');
       certLink.href = `/academic-service/web/certificate.jsp?name=${studentName}&userId=${userId}`;
     }
 
     const transcriptLink = document.getElementById('link-view-transcript');
     if (transcriptLink) {
-      const studentName = encodeURIComponent(user.name || 'Alex Sterling');
-      const userId = encodeURIComponent(user.id || 'usr-student-1');
-      transcriptLink.href = `/academic-service/web/transcript.jsp?studentId=STU-2026-8941&name=${studentName}&userId=${userId}`;
+      const studentName = encodeURIComponent(user.name || '');
+      const userId = encodeURIComponent(user.id || '');
+      transcriptLink.href = `/academic-service/web/transcript.jsp?studentId=${userId}&name=${studentName}&userId=${userId}`;
     }
 
     this.populateProfileForm();
@@ -829,12 +879,122 @@ class StudentPortalApp {
       });
     }
 
-    // Logout
+    // Logout from Profile
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
       btnLogout.addEventListener('click', () => {
-        this.showToast('Signed out of session.', 'info');
-        this.switchDemoAccount('student');
+        this.handleSignOut();
+      });
+    }
+
+    // Direct Header Sign Out
+    const btnHeaderSignout = document.getElementById('btn-header-signout');
+    if (btnHeaderSignout) {
+      btnHeaderSignout.addEventListener('click', () => {
+        this.handleSignOut();
+      });
+    }
+
+    // Header Login Button (Go to Dedicated Gateway)
+    const btnHeaderLogin = document.getElementById('btn-header-login-page');
+    if (btnHeaderLogin) {
+      btnHeaderLogin.addEventListener('click', () => {
+        this.switchView('view-auth');
+      });
+    }
+
+    // ==========================================
+    // Dedicated Authentication Gateway Listeners
+    // ==========================================
+    const gatewayTabs = document.querySelectorAll('.auth-gateway-tab-btn');
+    gatewayTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        gatewayTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.gatewayTab;
+        document.querySelectorAll('.auth-gateway-panel').forEach(p => p.classList.remove('active'));
+        if (target === 'tab-student') {
+          const p = document.getElementById('panel-gateway-student');
+          if (p) p.classList.add('active');
+        } else if (target === 'tab-faculty') {
+          const p = document.getElementById('panel-gateway-faculty');
+          if (p) p.classList.add('active');
+        } else if (target === 'tab-register') {
+          const p = document.getElementById('panel-gateway-register');
+          if (p) p.classList.add('active');
+        }
+      });
+    });
+
+    // Gateway Demo Quick-Fill Buttons
+    const btnFillDemoStudent = document.getElementById('btn-fill-demo-student');
+    if (btnFillDemoStudent) {
+      btnFillDemoStudent.addEventListener('click', () => {
+        const emailInput = document.getElementById('gateway-student-email');
+        const passInput = document.getElementById('gateway-student-password');
+        if (emailInput) emailInput.value = 'student@edusphere.edu';
+        if (passInput) passInput.value = 'password123';
+        this.showToast('Demo student credentials filled.', 'info');
+      });
+    }
+
+    const btnFillDemoFaculty = document.getElementById('btn-fill-demo-faculty');
+    if (btnFillDemoFaculty) {
+      btnFillDemoFaculty.addEventListener('click', () => {
+        const emailInput = document.getElementById('gateway-faculty-email');
+        const passInput = document.getElementById('gateway-faculty-password');
+        if (emailInput) emailInput.value = 'faculty@edusphere.edu';
+        if (passInput) passInput.value = 'password123';
+        this.showToast('Demo faculty credentials filled.', 'info');
+      });
+    }
+
+    // Gateway Student Form Submit
+    const formGatewayStudent = document.getElementById('gateway-form-student');
+    if (formGatewayStudent) {
+      formGatewayStudent.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('gateway-student-email').value.trim();
+        const password = document.getElementById('gateway-student-password').value;
+        await this.handleLogin(email, password, 'student');
+      });
+    }
+
+    // Gateway Faculty Form Submit
+    const formGatewayFaculty = document.getElementById('gateway-form-faculty');
+    if (formGatewayFaculty) {
+      formGatewayFaculty.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('gateway-faculty-email').value.trim();
+        const password = document.getElementById('gateway-faculty-password').value;
+        await this.handleLogin(email, password, 'faculty');
+      });
+    }
+
+    // Gateway Register Form Submit
+    const formGatewayRegister = document.getElementById('gateway-form-register');
+    if (formGatewayRegister) {
+      formGatewayRegister.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('gateway-reg-name').value.trim();
+        const email = document.getElementById('gateway-reg-email').value.trim();
+        const role = document.getElementById('gateway-reg-role').value;
+        const dept = document.getElementById('gateway-reg-dept').value.trim();
+        const password = document.getElementById('gateway-reg-password').value;
+
+        try {
+          const res = await this.service.register({ name, email, role, departmentOrMajor: dept, password });
+          if (res.success) {
+            this.showToast(`Account registered successfully! Welcome, ${res.user.name}.`, 'success');
+            this.saveSession(res.user);
+            await this.refreshAllData();
+            this.switchView(role === 'faculty' ? 'view-faculty' : 'view-dashboard');
+          } else {
+            this.showToast(res.error || 'Registration failed', 'error');
+          }
+        } catch (err) {
+          this.showToast(err.message, 'error');
+        }
       });
     }
 
@@ -1220,8 +1380,15 @@ class StudentPortalApp {
   }
 
   switchView(viewId) {
-    // Role protection
-    if (this.currentUser.role === 'faculty') {
+    // If user is unauthenticated, redirect private views to view-auth
+    const privateViews = ['view-dashboard', 'view-faculty', 'view-academic', 'view-profile'];
+    if (!this.currentUser && privateViews.includes(viewId)) {
+      this.showToast('Please sign in or register to access your portal records.', 'info');
+      viewId = 'view-auth';
+    }
+
+    // Role protection for faculty
+    if (this.currentUser && this.currentUser.role === 'faculty') {
       if (viewId === 'view-dashboard') viewId = 'view-faculty';
       if (viewId === 'view-academic') {
         this.showToast('Official Transcripts & Records are accessible in Student mode.', 'info');
@@ -1266,18 +1433,24 @@ class StudentPortalApp {
 
   async loadInitialData() {
     try {
-      const [coursesRes, enrollmentsRes] = await Promise.all([
-        this.service.fetchCourses(),
-        this.service.fetchEnrollments()
-      ]);
-
+      const coursesRes = await this.service.fetchCourses();
       this.courses = coursesRes.data || [];
-      this.enrollments = enrollmentsRes.data || [];
+
+      if (this.currentUser) {
+        const enrollmentsRes = await this.service.fetchEnrollments();
+        this.enrollments = enrollmentsRes.data || [];
+        this.renderEnrolledCourses();
+        if (this.currentUser.role === 'faculty') {
+          this.renderFacultyStudio();
+        }
+      } else {
+        this.enrollments = [];
+      }
 
       this.renderCourses(this.courses);
-      this.renderEnrolledCourses();
-      this.renderFacultyStudio();
-      this.analytics.drawStudyAnalytics();
+      if (this.analytics) {
+        this.analytics.drawStudyAnalytics();
+      }
     } catch (err) {
       console.error('Data load notice:', err);
     }
@@ -1775,6 +1948,12 @@ class StudentPortalApp {
   }
 
   async handleEnrollCourse(course) {
+    if (!this.currentUser) {
+      this.showToast('Please sign in or register to enroll in accredited courses.', 'info');
+      this.switchView('view-auth');
+      return;
+    }
+
     try {
       const res = await this.service.enrollInCourse(course.id);
       if (res.success) {

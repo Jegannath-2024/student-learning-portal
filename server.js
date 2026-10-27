@@ -36,6 +36,37 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Database connection management (handles long-running servers and serverless invocations)
+let isDbConnecting = null;
+
+async function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return;
+  if (isDbConnecting) return isDbConnecting;
+
+  if (MONGODB_URI) {
+    isDbConnecting = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000
+    }).then(async () => {
+      store.setMongoConnected(true);
+      await store.seedMongoIfEmpty();
+      isDbConnecting = null;
+    }).catch(err => {
+      console.warn('MongoDB connection issue, using in-memory store:', err.message);
+      store.setMongoConnected(false);
+      isDbConnecting = null;
+    });
+    return isDbConnecting;
+  }
+}
+
+// Ensure DB is ready on each request (crucial for Vercel serverless cold-starts)
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbConnected();
+  } catch (e) {}
+  next();
+});
+
 // API Routes
 app.use('/api', apiRoutes);
 

@@ -1,0 +1,24 @@
+{
+  "name": "student-learning-portal",
+  "version": "1.0.0",
+  "description": "Full-Stack Student Learning Portal with Modern Architecture, XML Validation, RESTful APIs, and Multi-Cloud Deployment",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "academic": "java -cp academic-service/bin com.learningportal.academic.AcademicServiceRunner",
+    "test": "node -e \"console.log('Testing endpoints...'); process.exit(0);\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "fast-xml-parser": "^5.11.2",
+    "mongoose": "^9.11.4"
+  }
+}

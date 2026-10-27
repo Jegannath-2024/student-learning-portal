@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="EduSphere Student Learning Portal - Comprehensive Academic Management and Modular Course Progression Platform">
+  <title>EduSphere • Advanced Student Learning Portal</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- ==========================================
+       Header Component (HTML5 Semantic)
+       ========================================== -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand-wrapper" href="#" onclick="window.portalApp.switchView('view-catalog'); return false;">
+        <div class="brand-icon">🎓</div>
+        <div class="brand-info">
+          <h1>EduSphere</h1>
+          <span>Academic Portal</span>
+        </div>
+      </a>
+
+      <!-- Global Live Search (Filtered by jQuery Debounce) -->
+      <div class="header-search">
+        <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" id="global-search-input" placeholder="Search courses, curriculum, topics..." autocomplete="off">
+      </div>
+
+      <!-- Action Items & Profile Header Badge -->
+      <div class="header-actions">
+        <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle Theme">
+          <span id="theme-toggle-icon">🌙</span>
+        </button>
+
+        <div class="student-badge-btn" onclick="window.portalApp.switchView('view-profile')">
+          <img class="student-badge-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Student Profile Avatar">
+          <span class="student-badge-name">Alex Sterling</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       Navigation Component (HTML5 Semantic)
+       ========================================== -->
+  <nav class="nav-bar">
+    <div class="container">
+      <ul class="nav-tabs">
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn active" data-view="view-catalog">
+            <span>📚 Explore Catalog</span>
+          </button>
+        </li>
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn" data-view="view-dashboard">
+            <span>📊 Learning Dashboard</span>
+          </button>
+        </li>
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn" data-view="view-classroom">
+            <span>💻 Course Classroom</span>
+          </button>
+        </li>
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn" data-view="view-curriculum">
+            <span>📜 Curriculum Specification</span>
+          </button>
+        </li>
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn" data-view="view-academic">
+            <span>🏛️ Academic Records &amp; Transcripts</span>
+          </button>
+        </li>
+        <li class="nav-tab-item">
+          <button class="nav-tab-btn" data-view="view-profile">
+            <span>⚙️ Student Profile</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ==========================================
+       Main Application Views
+       ========================================== -->
+  <main class="container">
+
+    <!-- VIEW 1: Course Catalog -->
+    <section id="view-catalog" class="view-section active">
+      <div class="section-header">
+        <div>
+          <h2>Explore Academic Curriculum</h2>
+          <p>Enroll in accredited technical coursework with structured milestones and verifiable credentials.</p>
+        </div>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="filter-bar">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-right: 8px;">Categories:</span>
+        <button class="filter-chip active" data-category="All">All Disciplines</button>
+        <button class="filter-chip" data-category="Computer Science">Computer Science</button>
+        <button class="filter-chip" data-category="Data Science">Data Science</button>
+        <button class="filter-chip" data-category="DevOps &amp; Cloud">DevOps &amp; Cloud</button>
+      </div>
+
+      <!-- Course Cards Grid (Dynamically Populated via DOM Methods) -->
+      <div id="course-grid" class="course-grid"></div>
+    </section>
+
+    <!-- VIEW 2: Learning Dashboard & Analytics -->
+    <section id="view-dashboard" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2>My Learning Dashboard</h2>
+          <p>Monitor your active courses, progression metrics, and continuous weekly engagement.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- KPI Metrics Grid -->
+        <div class="kpi-cards-grid">
+          <div class="kpi-card">
+            <div class="kpi-details">
+              <h4>Active Enrollments</h4>
+              <div class="kpi-number" id="kpi-enrolled-count">2</div>
+            </div>
+            <div class="kpi-icon">📖</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-details">
+              <h4>Average Completion</h4>
+              <div class="kpi-number" id="kpi-avg-progress">58%</div>
+            </div>
+            <div class="kpi-icon">📈</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-details">
+              <h4>Accredited Credits</h4>
+              <div class="kpi-number" id="kpi-total-credits">14</div>
+            </div>
+            <div class="kpi-icon">⭐</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-details">
+              <h4>Honors Standing</h4>
+              <div class="kpi-number" style="font-size:20px; color:var(--accent);">Top 5%</div>
+            </div>
+            <div class="kpi-icon">🏆</div>
+          </div>
+        </div>
+
+        <!-- HTML5 Canvas Study Hours Graph -->
+        <div class="analytics-chart-card">
+          <div class="analytics-chart-header">
+            <h3>Weekly Learning Hours Distribution</h3>
+            <span style="font-size:12px; color:var(--text-muted);">Rendered live via HTML5 Canvas 2D Engine</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="analyticsCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Milestones Widget -->
+        <div class="recent-activity-card">
+          <h3>Academic Milestones</h3>
+          <ul class="activity-list">
+            <li class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <strong>Completed Lesson 2.2</strong>
+                <p style="color:var(--text-muted); font-size:12px;">Full-Stack Web Architectures</p>
+              </div>
+            </li>
+            <li class="activity-item">
+              <span class="activity-dot" style="background:var(--accent);"></span>
+              <div>
+                <strong>Passed Diagnostic Assessment</strong>
+                <p style="color:var(--text-muted); font-size:12px;">Database Systems: Relational Modeling</p>
+              </div>
+            </li>
+            <li class="activity-item">
+              <span class="activity-dot" style="background:var(--accent-amber);"></span>
+              <div>
+                <strong>Curriculum XML Synchronized</strong>
+                <p style="color:var(--text-muted); font-size:12px;">Validated against official Schema Definition</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Enrolled Courses List -->
+        <div class="enrolled-section">
+          <h3 style="font-size:20px; font-weight:700; margin-bottom:16px;">Active Courses</h3>
+          <div id="enrolled-courses-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Course Classroom & Video Player -->
+    <section id="view-classroom" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2 id="classroom-course-title">Full-Stack Web Architectures</h2>
+          <p id="classroom-course-cat">Computer Science • Intermediate Level</p>
+        </div>
+        <button class="btn-secondary" onclick="window.portalApp.switchView('view-dashboard')">← Back to Dashboard</button>
+      </div>
+
+      <div class="classroom-layout">
+        <!-- Main Stage: HTML5 Video & Lesson Content -->
+        <div class="classroom-main-stage">
+          <div class="video-player-card">
+            <video id="lesson-video-player" controls preload="metadata" poster="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80">
+              <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+              Your browser does not support the HTML5 video element.
+            </video>
+          </div>
+
+          <div class="lesson-meta-card">
+            <div class="lesson-meta-header">
+              <h3 id="lesson-title-display">Semantic Document Structures &amp; Accessibility</h3>
+              <div style="display:flex; gap:10px;">
+                <button id="btn-open-quiz" class="btn-secondary">Take Lesson Quiz</button>
+                <button id="btn-complete-lesson" class="btn-complete-lesson">Mark as Completed</button>
+              </div>
+            </div>
+            <p id="lesson-summary-display" style="font-size: 14px; color: var(--text-muted); line-height: 1.6;">
+              Learn how semantic containers and proper document outlining improve SEO and screen reader accessibility.
+            </p>
+          </div>
+        </div>
+
+        <!-- Sidebar: Modules & Lessons Accordion -->
+        <aside class="modules-sidebar">
+          <h3 style="font-size:16px; font-weight:700; margin-bottom:14px;">Course Syllabus &amp; Modules</h3>
+          <div id="classroom-modules-list"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- VIEW 4: Curriculum Specification (XML / DTD / XSD) -->
+    <section id="view-curriculum" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2>Curriculum Specification &amp; Accreditation</h2>
+          <p>Official course descriptions defined in structured XML and validated against rigorous DTD and Schema declarations.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button id="btn-download-xml" class="btn-secondary">Download Curriculum XML</button>
+        </div>
+      </div>
+
+      <div class="curriculum-grid">
+        <!-- Parsed XML DOM Tree View -->
+        <div class="xml-card">
+          <h3><span>📑</span> Accredited Curriculum Tree</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+            Parsed directly in the browser using the HTML5 DOMParser API and standard DOM traversal methods.
+          </p>
+          <div id="xml-tree-view"></div>
+        </div>
+
+        <!-- Interactive XML Schema & DTD Validator -->
+        <div class="xml-card">
+          <h3><span>⚙️</span> Schema Validation Suite</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+            Verify curriculum payloads against <code>curriculum.dtd</code> rules and <code>curriculum.xsd</code> types via asynchronous AJAX.
+          </p>
+          <div class="xml-validator-form">
+            <textarea id="xml-validator-input" spellcheck="false" placeholder="Loading curriculum XML..."></textarea>
+            <div style="display:flex; gap:10px;">
+              <button id="btn-trigger-xml-validate" class="btn-primary">Validate XML Schema</button>
+              <button id="btn-reset-xml" class="btn-secondary">Reset Sample XML</button>
+            </div>
+            <div id="xml-validation-status" class="validation-output"></div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <h4 style="font-size:14px; margin-bottom:8px;">Raw Specification Payload</h4>
+            <div id="raw-xml-viewer" class="xml-code-box"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: Academic Records, Transcripts & Certificates -->
+    <section id="view-academic" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2>Academic Records &amp; Transcripts</h2>
+          <p>Verified university grade ledger and conferral records maintained through JDBC transactional services and JSP generation.</p>
+        </div>
+      </div>
+
+      <!-- Subsystem Gateway Banner -->
+      <div class="service-banner">
+        <div>
+          <h3>Official University Registrar Service</h3>
+          <p>Generate certified transcripts with GPA calculations or produce signed completion credentials.</p>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a href="/academic-service/web/transcript.jsp?studentId=STU-2026-8941" target="_blank" class="btn-primary" style="background:#ffffff; color:#1e3a8a;">
+            Open Official Transcript (JSP) ↗
+          </a>
+          <a href="/academic-service/web/certificate.jsp?name=Alex+Sterling" target="_blank" class="btn-secondary" style="background:rgba(255,255,255,0.2); color:#ffffff; border-color:transparent;">
+            View Degree Certificate (JSP) ↗
+          </a>
+        </div>
+      </div>
+
+      <!-- Summary Card -->
+      <div class="academic-card">
+        <h3 style="font-size:18px; font-weight:700; margin-bottom:16px;">Verified Transcript Summary</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
+          <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cumulative GPA</div>
+            <div id="academic-gpa-display" style="font-size:24px; font-weight:800; color:var(--primary); margin-top:4px;">3.92 / 4.00</div>
+          </div>
+          <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Credits Completed</div>
+            <div style="font-size:24px; font-weight:800; color:var(--text-main); margin-top:4px;">42 Units</div>
+          </div>
+          <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Academic Honors</div>
+            <div id="academic-standing-badge" style="font-size:18px; font-weight:700; color:var(--accent); margin-top:4px;">Dean's Honors List</div>
+          </div>
+          <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
+            <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Verification Code</div>
+            <div id="academic-cert-code" style="font-size:16px; font-weight:700; color:var(--text-main); font-family:monospace; margin-top:6px;">VERIFY-AWT-982145</div>
+          </div>
+        </div>
+
+        <p style="font-size:13px; color:var(--text-muted);">
+          Records are verified against database tables using parameterized JDBC queries and rendered via the academic reporting subsystem.
+        </p>
+      </div>
+    </section>
+
+    <!-- VIEW 6: Student Profile Form -->
+    <section id="view-profile" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2>Student Profile &amp; Preferences</h2>
+          <p>Update your academic credentials, degree track, and personal learning objectives.</p>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-avatar-row">
+          <img class="profile-avatar-large" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Profile Picture">
+          <div>
+            <h3 id="display-student-name" style="font-size:20px; font-weight:700;">Alex Sterling</h3>
+            <p id="display-student-major" style="font-size:14px; color:var(--text-muted);">Computer Science &amp; Engineering</p>
+            <span style="font-size:12px; font-family:monospace; color:var(--primary); font-weight:600;">ID: STU-2026-8941</span>
+          </div>
+        </div>
+
+        <form id="student-profile-form">
+          <div class="form-group">
+            <label for="profile-name-input">Full Legal Name</label>
+            <input type="text" id="profile-name-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-email-input">Institutional Email Address</label>
+            <input type="email" id="profile-email-input" readonly style="opacity:0.7; cursor:not-allowed;">
+          </div>
+
+          <div class="form-group">
+            <label for="profile-major-input">Degree Program &amp; Major</label>
+            <input type="text" id="profile-major-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-bio-input">Academic Biography &amp; Research Focus</label>
+            <textarea id="profile-bio-input" rows="3"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-goals-input">Primary Learning Objectives</label>
+            <textarea id="profile-goals-input" rows="2"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" class="btn-primary">Save Profile Changes</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       HTML5 Modal Dialog Component
+       ========================================== -->
+  <dialog id="custom-modal" class="custom-modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Modal Notification</h3>
+      <button id="modal-close-btn" class="btn-close-modal" aria-label="Close dialog">✕</button>
+    </div>
+    <div id="modal-body-content" class="modal-body"></div>
+  </dialog>
+
+  <!-- ==========================================
+       Toast Alerts Container
+       ========================================== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ==========================================
+       Footer (HTML5 Semantic)
+       ========================================== -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <strong>EduSphere Learning Technologies</strong> • Continuous Cloud Education Architecture
+      </div>
+      <div>
+        <span>Accredited Academic Platform © 2026</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/xml-handler.js"></script>
+  <script src="js/jquery-interactions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

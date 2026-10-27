@@ -1,0 +1,40 @@
+<!-- Document Type Definition (DTD) for Course Curriculum Specification -->
+<!ELEMENT curriculum (academicYear, department, course+)>
+<!ELEMENT academicYear (#PCDATA)>
+<!ELEMENT department (#PCDATA)>
+
+<!ELEMENT course (courseCode, title, credits, level, duration, instructor, description, modules)>
+<!ATTLIST course 
+          id ID #REQUIRED
+          category CDATA #REQUIRED>
+
+<!ELEMENT courseCode (#PCDATA)>
+<!ELEMENT title (#PCDATA)>
+<!ELEMENT credits (#PCDATA)>
+<!ELEMENT level (#PCDATA)>
+<!ELEMENT duration (#PCDATA)>
+
+<!ELEMENT instructor (name, email, officeHours?)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT email (#PCDATA)>
+<!ELEMENT officeHours (#PCDATA)>
+
+<!ELEMENT description (#PCDATA)>
+
+<!ELEMENT modules (module+)>
+<!ELEMENT module (moduleOrder, moduleTitle, lessons)>
+<!ATTLIST module moduleId CDATA #REQUIRED>
+
+<!ELEMENT moduleOrder (#PCDATA)>
+<!ELEMENT moduleTitle (#PCDATA)>
+
+<!ELEMENT lessons (lesson+)>
+<!ELEMENT lesson (lessonOrder, lessonTitle, durationMinutes, topics)>
+<!ATTLIST lesson lessonId CDATA #REQUIRED>
+
+<!ELEMENT lessonOrder (#PCDATA)>
+<!ELEMENT lessonTitle (#PCDATA)>
+<!ELEMENT durationMinutes (#PCDATA)>
+
+<!ELEMENT topics (topic+)>
+<!ELEMENT topic (#PCDATA)>

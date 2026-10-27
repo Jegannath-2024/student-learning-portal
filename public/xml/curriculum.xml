@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE curriculum SYSTEM "curriculum.dtd">
+<curriculum xmlns="http://learningportal.edu/curriculum"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://learningportal.edu/curriculum curriculum.xsd">
+  <academicYear>2026-2027</academicYear>
+  <department>Department of Computer Science &amp; Engineering</department>
+
+  <course id="c_cs101" category="Web Engineering">
+    <courseCode>CS-101</courseCode>
+    <title>Full-Stack Web Architectures</title>
+    <credits>4</credits>
+    <level>Intermediate</level>
+    <duration>10 Weeks</duration>
+    <instructor>
+      <name>Dr. Sarah Mitchell</name>
+      <email>sarah.mitchell@learningportal.edu</email>
+      <officeHours>Tue/Thu 14:00 - 16:00 UTC</officeHours>
+    </instructor>
+    <description>Enterprise web architectures with responsive layout design, client DOM lifecycle, asynchronous REST communication, and document persistence.</description>
+    <modules>
+      <module moduleId="m-101">
+        <moduleOrder>1</moduleOrder>
+        <moduleTitle>Semantic Markup &amp; Styling Systems</moduleTitle>
+        <lessons>
+          <lesson lessonId="l-101a">
+            <lessonOrder>1</lessonOrder>
+            <lessonTitle>Semantic Document Outlining &amp; Canvas Graphics</lessonTitle>
+            <durationMinutes>25</durationMinutes>
+            <topics>
+              <topic>HTML5 Semantic Tags</topic>
+              <topic>Canvas 2D Context</topic>
+              <topic>Accessibility WAI-ARIA</topic>
+            </topics>
+          </lesson>
+          <lesson lessonId="l-101b">
+            <lessonOrder>2</lessonOrder>
+            <lessonTitle>Fluid Layouts with CSS Grid &amp; Keyframe Animations</lessonTitle>
+            <durationMinutes>30</durationMinutes>
+            <topics>
+              <topic>CSS Grid Template Areas</topic>
+              <topic>Hardware Accelerated Keyframes</topic>
+              <topic>CSS Custom Properties</topic>
+            </topics>
+          </lesson>
+        </lessons>
+      </module>
+      <module moduleId="m-102">
+        <moduleOrder>2</moduleOrder>
+        <moduleTitle>DOM Traversal &amp; Asynchronous Data Streams</moduleTitle>
+        <lessons>
+          <lesson lessonId="l-102a">
+            <lessonOrder>1</lessonOrder>
+            <lessonTitle>Object Models &amp; Direct DOM Tree Methods</lessonTitle>
+            <durationMinutes>35</durationMinutes>
+            <topics>
+              <topic>DOM Node Creation &amp; Fragments</topic>
+              <topic>Event Delegation</topic>
+              <topic>ES6 Class Encapsulation</topic>
+            </topics>
+          </lesson>
+          <lesson lessonId="l-102b">
+            <lessonOrder>2</lessonOrder>
+            <lessonTitle>RESTful Communication with AJAX &amp; JSON</lessonTitle>
+            <durationMinutes>40</durationMinutes>
+            <topics>
+              <topic>HTTP Methods (GET, POST, PUT, DELETE)</topic>
+              <topic>JSON Serialization</topic>
+              <topic>jQuery AJAX &amp; Promises</topic>
+            </topics>
+          </lesson>
+        </lessons>
+      </module>
+    </modules>
+  </course>
+
+  <course id="c_ds202" category="Data Systems">
+    <courseCode>DS-202</courseCode>
+    <title>Database Systems: Document &amp; Relational Modeling</title>
+    <credits>3</credits>
+    <level>Advanced</level>
+    <duration>8 Weeks</duration>
+    <instructor>
+      <name>Prof. Arvind Ramanathan</name>
+      <email>arvind.ramanathan@learningportal.edu</email>
+      <officeHours>Mon/Wed 10:00 - 12:00 UTC</officeHours>
+    </instructor>
+    <description>In-depth exploration of JDBC connectivity, relational transaction isolation, and document-oriented MongoDB persistence.</description>
+    <modules>
+      <module moduleId="m-201">
+        <moduleOrder>1</moduleOrder>
+        <moduleTitle>Relational Connectivity &amp; JDBC Foundations</moduleTitle>
+        <lessons>
+          <lesson lessonId="l-201a">
+            <lessonOrder>1</lessonOrder>
+            <lessonTitle>JDBC Drivers, Connections &amp; Prepared Statements</lessonTitle>
+            <durationMinutes>30</durationMinutes>
+            <topics>
+              <topic>DriverManager Architecture</topic>
+              <topic>SQL Injection Mitigation</topic>
+              <topic>Transaction Commit &amp; Rollback</topic>
+            </topics>
+          </lesson>
+        </lessons>
+      </module>
+      <module moduleId="m-202">
+        <moduleOrder>2</moduleOrder>
+        <moduleTitle>Document Aggregation &amp; Scalable Schemas</moduleTitle>
+        <lessons>
+          <lesson lessonId="l-202a">
+            <lessonOrder>1</lessonOrder>
+            <lessonTitle>MongoDB Document Lifecycle &amp; Aggregations</lessonTitle>
+            <durationMinutes>45</durationMinutes>
+            <topics>
+              <topic>BSON Serialization</topic>
+              <topic>Aggregation Pipeline</topic>
+              <topic>Mongoose Schema Validation</topic>
+            </topics>
+          </lesson>
+        </lessons>
+      </module>
+    </modules>
+  </course>
+</curriculum>

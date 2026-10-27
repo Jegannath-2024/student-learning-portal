@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- XML Schema Definition (XSD) for Course Curriculum Specification -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://learningportal.edu/curriculum"
+           xmlns="http://learningportal.edu/curriculum"
+           elementFormDefault="qualified">
+
+  <!-- Simple Type: Level Enumeration -->
+  <xs:simpleType name="CourseLevelType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Beginner"/>
+      <xs:enumeration value="Intermediate"/>
+      <xs:enumeration value="Advanced"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Simple Type: Credits Range 1 to 6 -->
+  <xs:simpleType name="CreditsType">
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="1"/>
+      <xs:maxInclusive value="6"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Root Element: Curriculum -->
+  <xs:element name="curriculum">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="academicYear" type="xs:string"/>
+        <xs:element name="department" type="xs:string"/>
+        <xs:element name="course" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="courseCode" type="xs:string"/>
+              <xs:element name="title" type="xs:string"/>
+              <xs:element name="credits" type="CreditsType"/>
+              <xs:element name="level" type="CourseLevelType"/>
+              <xs:element name="duration" type="xs:string"/>
+              <xs:element name="instructor">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="name" type="xs:string"/>
+                    <xs:element name="email" type="xs:string"/>
+                    <xs:element name="officeHours" type="xs:string" minOccurs="0"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="description" type="xs:string"/>
+              <xs:element name="modules">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="module" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="moduleOrder" type="xs:positiveInteger"/>
+                          <xs:element name="moduleTitle" type="xs:string"/>
+                          <xs:element name="lessons">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="lesson" maxOccurs="unbounded">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="lessonOrder" type="xs:positiveInteger"/>
+                                      <xs:element name="lessonTitle" type="xs:string"/>
+                                      <xs:element name="durationMinutes" type="xs:positiveInteger"/>
+                                      <xs:element name="topics">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="topic" type="xs:string" maxOccurs="unbounded"/>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute name="lessonId" type="xs:string" use="required"/>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="moduleId" type="xs:string" use="required"/>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute name="id" type="xs:ID" use="required"/>
+            <xs:attribute name="category" type="xs:string" use="required"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

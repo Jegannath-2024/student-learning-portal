@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="EduSphere Student Learning Portal - Comprehensive Academic Management and Modular Course Progression Platform">
-  <title>EduSphere • Advanced Student Learning Portal</title>
+  <meta name="description" content="EduSphere Academic Portal - Unified Student Learning Management and Faculty Course Studio">
+  <title>EduSphere • Student Learning &amp; Faculty Academic Portal</title>
   <link rel="stylesheet" href="css/styles.css">
-  <!-- jQuery CDN -->
+  <!-- jQuery 3.7.1 -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -16,11 +16,11 @@
        ========================================== -->
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand-wrapper" href="#" onclick="window.portalApp.switchView('view-catalog'); return false;">
+      <a class="brand-wrapper" href="#" id="brand-home-link">
         <div class="brand-icon">🎓</div>
         <div class="brand-info">
           <h1>EduSphere</h1>
-          <span>Academic Portal</span>
+          <span id="brand-sub-badge">Academic Portal</span>
         </div>
       </a>
 
@@ -30,57 +30,78 @@
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="search" id="global-search-input" placeholder="Search courses, curriculum, topics..." autocomplete="off">
+        <input type="search" id="global-search-input" placeholder="Search courses, modules, faculty..." autocomplete="off">
       </div>
 
-      <!-- Action Items & Profile Header Badge -->
+      <!-- Action Items & User Profile Badge -->
       <div class="header-actions">
-        <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle Theme">
+        <!-- Quick Role Switcher Button -->
+        <button class="btn-switch-role" id="btn-quick-switch-role" title="Switch between Student and Faculty View">
+          <span>🔄</span>
+          <span id="quick-switch-label">Switch to Faculty</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle Dark/Light Mode">
           <span id="theme-toggle-icon">🌙</span>
         </button>
 
-        <div class="student-badge-btn" onclick="window.portalApp.switchView('view-profile')">
-          <img class="student-badge-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Student Profile Avatar">
-          <span class="student-badge-name">Alex Sterling</span>
+        <!-- Current User Profile Pill -->
+        <div class="student-badge-btn" id="user-profile-pill" title="View Profile">
+          <img class="student-badge-avatar" id="header-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="User Avatar">
+          <div style="display:flex; flex-direction:column; text-align:left;">
+            <span class="student-badge-name" id="header-user-name">Alex Sterling</span>
+            <span class="user-role-chip role-student" id="header-role-badge">Student</span>
+          </div>
         </div>
+
+        <!-- Sign In / Switch Account Button -->
+        <button class="btn-secondary" id="btn-open-auth-modal" style="padding:7px 12px; font-size:12px;">
+          Account
+        </button>
       </div>
     </div>
   </header>
 
   <!-- ==========================================
-       Navigation Component (HTML5 Semantic)
+       Navigation Component (Context-Aware Tabs)
        ========================================== -->
   <nav class="nav-bar">
     <div class="container">
-      <ul class="nav-tabs">
+      <ul class="nav-tabs" id="portal-nav-tabs">
         <li class="nav-tab-item">
-          <button class="nav-tab-btn active" data-view="view-catalog">
-            <span>📚 Explore Catalog</span>
+          <button class="nav-tab-btn active" data-view="view-catalog" id="nav-btn-catalog">
+            <span>📚 Course Catalog</span>
+          </button>
+        </li>
+        <li class="nav-tab-item" id="nav-item-dashboard">
+          <button class="nav-tab-btn" data-view="view-dashboard" id="nav-btn-dashboard">
+            <span>📊 Student Dashboard</span>
+          </button>
+        </li>
+        <li class="nav-tab-item" id="nav-item-faculty">
+          <button class="nav-tab-btn" data-view="view-faculty" id="nav-btn-faculty" style="display:none;">
+            <span>🏫 Faculty Studio</span>
           </button>
         </li>
         <li class="nav-tab-item">
-          <button class="nav-tab-btn" data-view="view-dashboard">
-            <span>📊 Learning Dashboard</span>
-          </button>
-        </li>
-        <li class="nav-tab-item">
-          <button class="nav-tab-btn" data-view="view-classroom">
+          <button class="nav-tab-btn" data-view="view-classroom" id="nav-btn-classroom">
             <span>💻 Course Classroom</span>
           </button>
         </li>
         <li class="nav-tab-item">
-          <button class="nav-tab-btn" data-view="view-curriculum">
+          <button class="nav-tab-btn" data-view="view-curriculum" id="nav-btn-curriculum">
             <span>📜 Curriculum Specification</span>
           </button>
         </li>
         <li class="nav-tab-item">
-          <button class="nav-tab-btn" data-view="view-academic">
-            <span>🏛️ Academic Records &amp; Transcripts</span>
+          <button class="nav-tab-btn" data-view="view-academic" id="nav-btn-academic">
+            <span>🏛️ Transcripts &amp; Records</span>
           </button>
         </li>
         <li class="nav-tab-item">
-          <button class="nav-tab-btn" data-view="view-profile">
-            <span>⚙️ Student Profile</span>
+          <button class="nav-tab-btn" data-view="view-profile" id="nav-btn-profile">
+            <span>⚙️ Profile Settings</span>
           </button>
         </li>
       </ul>
@@ -92,35 +113,39 @@
        ========================================== -->
   <main class="container">
 
-    <!-- VIEW 1: Course Catalog -->
+    <!-- VIEW 1: Course Catalog (All Users) -->
     <section id="view-catalog" class="view-section active">
       <div class="section-header">
         <div>
-          <h2>Explore Academic Curriculum</h2>
-          <p>Enroll in accredited technical coursework with structured milestones and verifiable credentials.</p>
+          <h2>Academic Course Catalog</h2>
+          <p>Browse accredited technical coursework with structured milestones and verifiable credentials.</p>
+        </div>
+        <div id="catalog-faculty-banner" style="display:none;">
+          <button class="btn-primary" id="btn-catalog-create-course">➕ Create New Course</button>
         </div>
       </div>
 
-      <!-- Category Filter Chips -->
+      <!-- Filter Bar -->
       <div class="filter-bar">
-        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-right: 8px;">Categories:</span>
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-right: 8px;">Disciplines:</span>
         <button class="filter-chip active" data-category="All">All Disciplines</button>
         <button class="filter-chip" data-category="Computer Science">Computer Science</button>
         <button class="filter-chip" data-category="Data Science">Data Science</button>
         <button class="filter-chip" data-category="DevOps &amp; Cloud">DevOps &amp; Cloud</button>
       </div>
 
-      <!-- Course Cards Grid (Dynamically Populated via DOM Methods) -->
+      <!-- Course Cards Grid -->
       <div id="course-grid" class="course-grid"></div>
     </section>
 
-    <!-- VIEW 2: Learning Dashboard & Analytics -->
+    <!-- VIEW 2: Student Learning Dashboard (Student Only) -->
     <section id="view-dashboard" class="view-section">
       <div class="section-header">
         <div>
           <h2>My Learning Dashboard</h2>
-          <p>Monitor your active courses, progression metrics, and continuous weekly engagement.</p>
+          <p>Track your enrolled courses, weekly study hours, and academic milestone completions.</p>
         </div>
+        <button class="btn-primary" onclick="window.portalApp.switchView('view-catalog')">Explore More Courses</button>
       </div>
 
       <div class="dashboard-grid">
@@ -197,20 +222,76 @@
 
         <!-- Enrolled Courses List -->
         <div class="enrolled-section">
-          <h3 style="font-size:20px; font-weight:700; margin-bottom:16px;">Active Courses</h3>
+          <h3 style="font-size:20px; font-weight:700; margin-bottom:16px;">Active Enrolled Courses</h3>
           <div id="enrolled-courses-list"></div>
         </div>
       </div>
     </section>
 
-    <!-- VIEW 3: Course Classroom & Video Player -->
+    <!-- VIEW 3: Faculty Studio & Course Creator (Faculty Only) -->
+    <section id="view-faculty" class="view-section">
+      <div class="section-header">
+        <div>
+          <h2>Faculty Course Studio</h2>
+          <p>Author and publish academic courses, curate lesson modules, and monitor student progress metrics.</p>
+        </div>
+        <button class="btn-primary" id="btn-faculty-open-create-modal">➕ Author New Course</button>
+      </div>
+
+      <!-- Faculty KPI Overview -->
+      <div class="kpi-cards-grid" style="margin-bottom: 24px;">
+        <div class="kpi-card">
+          <div class="kpi-details">
+            <h4>Authored Courses</h4>
+            <div class="kpi-number" id="fac-kpi-courses">2</div>
+          </div>
+          <div class="kpi-icon">📚</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-details">
+            <h4>Total Enrolled Students</h4>
+            <div class="kpi-number" id="fac-kpi-students">3,070</div>
+          </div>
+          <div class="kpi-icon">👥</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-details">
+            <h4>Active Course Cohorts</h4>
+            <div class="kpi-number" id="fac-kpi-active">2</div>
+          </div>
+          <div class="kpi-icon">🎯</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-details">
+            <h4>Certificates Awarded</h4>
+            <div class="kpi-number" id="fac-kpi-certs">21</div>
+          </div>
+          <div class="kpi-icon">🎓</div>
+        </div>
+      </div>
+
+      <!-- Faculty Course Management List -->
+      <div class="faculty-actions-bar">
+        <div>
+          <h3 style="font-size: 18px; font-weight: 700;">Curriculum Management &amp; Course Actions</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">Manage modules, upload lecture video links, or retire courses.</p>
+        </div>
+        <button class="btn-secondary" id="btn-sync-faculty-data">🔄 Refresh Catalog</button>
+      </div>
+
+      <div id="faculty-courses-container"></div>
+    </section>
+
+    <!-- VIEW 4: Course Classroom & Video Player (All Users) -->
     <section id="view-classroom" class="view-section">
       <div class="section-header">
         <div>
           <h2 id="classroom-course-title">Full-Stack Web Architectures</h2>
           <p id="classroom-course-cat">Computer Science • Intermediate Level</p>
         </div>
-        <button class="btn-secondary" onclick="window.portalApp.switchView('view-dashboard')">← Back to Dashboard</button>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-secondary" id="btn-classroom-back">← Back</button>
+        </div>
       </div>
 
       <div class="classroom-layout">
@@ -226,7 +307,7 @@
           <div class="lesson-meta-card">
             <div class="lesson-meta-header">
               <h3 id="lesson-title-display">Semantic Document Structures &amp; Accessibility</h3>
-              <div style="display:flex; gap:10px;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button id="btn-open-quiz" class="btn-secondary">Take Lesson Quiz</button>
                 <button id="btn-complete-lesson" class="btn-complete-lesson">Mark as Completed</button>
               </div>
@@ -239,13 +320,18 @@
 
         <!-- Sidebar: Modules & Lessons Accordion -->
         <aside class="modules-sidebar">
-          <h3 style="font-size:16px; font-weight:700; margin-bottom:14px;">Course Syllabus &amp; Modules</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="font-size:16px; font-weight:700;">Course Syllabus &amp; Modules</h3>
+            <span id="classroom-faculty-add-module-wrap" style="display:none;">
+              <button class="btn-secondary" id="btn-classroom-add-module" style="padding:4px 8px; font-size:11px;">+ Add Module</button>
+            </span>
+          </div>
           <div id="classroom-modules-list"></div>
         </aside>
       </div>
     </section>
 
-    <!-- VIEW 4: Curriculum Specification (XML / DTD / XSD) -->
+    <!-- VIEW 5: Curriculum Specification (XML / DTD / XSD) -->
     <section id="view-curriculum" class="view-section">
       <div class="section-header">
         <div>
@@ -290,7 +376,7 @@
       </div>
     </section>
 
-    <!-- VIEW 5: Academic Records, Transcripts & Certificates -->
+    <!-- VIEW 6: Academic Records & Transcripts (JSP & JDBC Gateway) -->
     <section id="view-academic" class="view-section">
       <div class="section-header">
         <div>
@@ -343,22 +429,25 @@
       </div>
     </section>
 
-    <!-- VIEW 6: Student Profile Form -->
+    <!-- VIEW 7: User Profile Settings (Student & Faculty) -->
     <section id="view-profile" class="view-section">
       <div class="section-header">
         <div>
-          <h2>Student Profile &amp; Preferences</h2>
-          <p>Update your academic credentials, degree track, and personal learning objectives.</p>
+          <h2>Profile &amp; Credentials</h2>
+          <p>Update your academic credentials, degree program, and institutional biography.</p>
         </div>
       </div>
 
       <div class="profile-card">
         <div class="profile-avatar-row">
-          <img class="profile-avatar-large" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Profile Picture">
+          <img class="profile-avatar-large" id="profile-card-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" alt="Profile Picture">
           <div>
-            <h3 id="display-student-name" style="font-size:20px; font-weight:700;">Alex Sterling</h3>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h3 id="display-student-name" style="font-size:20px; font-weight:700;">Alex Sterling</h3>
+              <span class="user-role-chip role-student" id="profile-role-badge">Student</span>
+            </div>
             <p id="display-student-major" style="font-size:14px; color:var(--text-muted);">Computer Science &amp; Engineering</p>
-            <span style="font-size:12px; font-family:monospace; color:var(--primary); font-weight:600;">ID: STU-2026-8941</span>
+            <span style="font-size:12px; font-family:monospace; color:var(--primary); font-weight:600;" id="display-user-id">ID: usr-student-1</span>
           </div>
         </div>
 
@@ -374,22 +463,33 @@
           </div>
 
           <div class="form-group">
-            <label for="profile-major-input">Degree Program &amp; Major</label>
+            <label for="profile-major-input" id="profile-dept-label">Degree Track / Academic Major</label>
             <input type="text" id="profile-major-input" required>
           </div>
 
-          <div class="form-group">
-            <label for="profile-bio-input">Academic Biography &amp; Research Focus</label>
-            <textarea id="profile-bio-input" rows="3"></textarea>
+          <div class="form-group" id="profile-title-group" style="display:none;">
+            <label for="profile-title-input">Academic Title / Position</label>
+            <input type="text" id="profile-title-input">
           </div>
 
           <div class="form-group">
+            <label for="profile-bio-input">Biography &amp; Academic Background</label>
+            <textarea id="profile-bio-input" rows="3"></textarea>
+          </div>
+
+          <div class="form-group" id="profile-goals-group">
             <label for="profile-goals-input">Primary Learning Objectives</label>
             <textarea id="profile-goals-input" rows="2"></textarea>
           </div>
 
-          <div style="display:flex; justify-content:flex-end;">
-            <button type="submit" class="btn-primary">Save Profile Changes</button>
+          <div class="form-group" id="profile-office-hours-group" style="display:none;">
+            <label for="profile-office-input">Office Hours &amp; Consultation Schedule</label>
+            <input type="text" id="profile-office-input">
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+            <button type="button" class="btn-danger" id="btn-logout">Sign Out</button>
+            <button type="submit" class="btn-primary" id="btn-save-profile">Save Profile Changes</button>
           </div>
         </form>
       </div>
@@ -398,7 +498,191 @@
   </main>
 
   <!-- ==========================================
-       HTML5 Modal Dialog Component
+       MODAL: Auth / Login / Register Modal
+       ========================================== -->
+  <dialog id="auth-modal" class="custom-modal" style="max-width:540px;">
+    <div class="modal-header">
+      <h3 id="auth-modal-title">EduSphere Portal Login</h3>
+      <button id="auth-modal-close-btn" class="btn-close-modal" aria-label="Close dialog">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Quick Demo 1-Click Accounts Banner -->
+      <div class="quick-demo-accounts">
+        <strong style="font-size:12px; color:var(--text-main);">⚡ Quick 1-Click Demo Login:</strong>
+        <div class="quick-demo-buttons">
+          <button type="button" class="btn-demo-login" id="btn-quick-login-student">
+            🎓 Student: Alex Sterling
+          </button>
+          <button type="button" class="btn-demo-login" id="btn-quick-login-faculty">
+            👩‍🏫 Faculty: Dr. Sarah Mitchell
+          </button>
+        </div>
+      </div>
+
+      <!-- Auth Navigation Tabs -->
+      <div class="auth-nav-tabs">
+        <div class="auth-nav-tab active" data-auth-tab="tab-login-student">Student Login</div>
+        <div class="auth-nav-tab" data-auth-tab="tab-login-faculty">Faculty Login</div>
+        <div class="auth-nav-tab" data-auth-tab="tab-register">Register New</div>
+      </div>
+
+      <!-- Tab 1: Student Login -->
+      <form id="form-login-student" class="auth-form-tab">
+        <div class="form-group">
+          <label>Student Email Address</label>
+          <input type="email" id="login-student-email" value="alex.sterling@learningportal.edu" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-student-password" value="password123" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; margin-top:10px;">Login to Student Portal</button>
+      </form>
+
+      <!-- Tab 2: Faculty Login -->
+      <form id="form-login-faculty" class="auth-form-tab" style="display:none;">
+        <div class="form-group">
+          <label>Faculty Institutional Email</label>
+          <input type="email" id="login-faculty-email" value="sarah.mitchell@learningportal.edu" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-faculty-password" value="password123" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; margin-top:10px; background:#d97706;">Login to Faculty Studio</button>
+      </form>
+
+      <!-- Tab 3: Register -->
+      <form id="form-register" class="auth-form-tab" style="display:none;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="reg-name" placeholder="e.g. Maya Chen" required>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="reg-email" placeholder="e.g. maya.chen@learningportal.edu" required>
+        </div>
+        <div class="form-group">
+          <label>Account Role</label>
+          <select id="reg-role">
+            <option value="student">Student Account</option>
+            <option value="faculty">Faculty Instructor Account</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Department / Major</label>
+          <input type="text" id="reg-dept" placeholder="e.g. Computer Science & Engineering" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="Create a password" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; margin-top:10px;">Create Account</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ==========================================
+       MODAL: Faculty Course Creator Modal
+       ========================================== -->
+  <dialog id="course-create-modal" class="custom-modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h3>Author New Academic Course</h3>
+      <button id="course-create-modal-close" class="btn-close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-create-course">
+        <div class="form-group">
+          <label>Course Title</label>
+          <input type="text" id="new-course-title" placeholder="e.g. Advanced Distributed Systems & Cloud Microservices" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="form-group">
+            <label>Discipline Category</label>
+            <select id="new-course-category">
+              <option value="Computer Science">Computer Science</option>
+              <option value="Data Science">Data Science</option>
+              <option value="DevOps & Cloud">DevOps &amp; Cloud</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Difficulty Level</label>
+            <select id="new-course-level">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="form-group">
+            <label>Academic Credits (1 - 6)</label>
+            <input type="number" id="new-course-credits" min="1" max="6" value="4" required>
+          </div>
+          <div class="form-group">
+            <label>Course Duration</label>
+            <input type="text" id="new-course-duration" value="8 Weeks" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Course Description &amp; Syllabus Overview</label>
+          <textarea id="new-course-desc" rows="3" placeholder="Provide an in-depth course description..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Thumbnail Image URL (Optional)</label>
+          <input type="url" id="new-course-thumb" placeholder="https://images.unsplash.com/photo-...">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-create-course">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-submit-create-course">Publish Course to Catalog</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ==========================================
+       MODAL: Faculty Add Module to Course Modal
+       ========================================== -->
+  <dialog id="module-create-modal" class="custom-modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="module-modal-title">Add Module to Course</h3>
+      <button id="module-create-modal-close" class="btn-close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-module">
+        <input type="hidden" id="add-module-course-id">
+        <div class="form-group">
+          <label>Module Title</label>
+          <input type="text" id="new-module-title" placeholder="e.g. Module 4: Cloud Native Pipelines" required>
+        </div>
+        <div class="form-group">
+          <label>Initial Lesson Title</label>
+          <input type="text" id="new-lesson-title" placeholder="e.g. Continuous Integration & Unit Testing" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="form-group">
+            <label>Lesson Duration</label>
+            <input type="text" id="new-lesson-duration" value="25 min" required>
+          </div>
+          <div class="form-group">
+            <label>Lecture Video URL</label>
+            <input type="url" id="new-lesson-video" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Lesson Summary</label>
+          <textarea id="new-lesson-summary" rows="2" placeholder="Brief lesson learning objectives..."></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-add-module">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-submit-add-module">Add Module &amp; Lesson</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ==========================================
+       HTML5 Modal Dialog Component (General & Quiz)
        ========================================== -->
   <dialog id="custom-modal" class="custom-modal">
     <div class="modal-header">
@@ -408,9 +692,7 @@
     <div id="modal-body-content" class="modal-body"></div>
   </dialog>
 
-  <!-- ==========================================
-       Toast Alerts Container
-       ========================================== -->
+  <!-- Toast Alerts Container -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- ==========================================
@@ -419,7 +701,7 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <div>
-        <strong>EduSphere Learning Technologies</strong> • Continuous Cloud Education Architecture
+        <strong>EduSphere Academic Portal</strong> • Enterprise Learning Management &amp; Course Studio
       </div>
       <div>
         <span>Accredited Academic Platform © 2026</span>

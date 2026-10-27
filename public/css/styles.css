@@ -1239,3 +1239,210 @@ dialog.custom-modal::backdrop {
     font-size: 13px;
   }
 }
+
+/* ====================================================================
+   Role-Based Access Control & Faculty Management UI
+   ==================================================================== */
+
+.user-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.5px;
+}
+
+.role-student {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.role-faculty {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.btn-switch-role {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-switch-role:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btn-auth-trigger {
+  background: var(--primary-gradient);
+  color: #ffffff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-auth-trigger:hover {
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* Auth Modal Tabs */
+.auth-nav-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.auth-nav-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.auth-nav-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.quick-demo-accounts {
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.quick-demo-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-demo-login {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-demo-login:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Faculty Studio Management */
+.faculty-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.faculty-course-item {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  padding: 22px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  transition: all var(--transition-fast);
+}
+
+.faculty-course-item:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.faculty-course-meta {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex: 1;
+  min-width: 280px;
+}
+
+.faculty-course-meta img {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.faculty-btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-manage-syllabus {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-manage-syllabus:hover {
+  background: #dcfce7;
+}
+
+.btn-delete-course {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-delete-course:hover {
+  background: #fee2e2;
+}

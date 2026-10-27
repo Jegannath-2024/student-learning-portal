@@ -5,7 +5,7 @@
  */
 
 $(document).ready(function() {
-  console.log("jQuery 3.x initialized for Student Learning Portal.");
+  console.log("jQuery 3.x initialized for EduSphere Academic Portal.");
 
   // 1. jQuery Accordion Slide Toggle for Course Modules in Classroom view
   $(document).on('click', '.module-header', function() {
@@ -19,7 +19,7 @@ $(document).ready(function() {
     }
   });
 
-  // 2. jQuery Live Search Debounce & Instant UI Highlight
+  // 2. jQuery Live Search Debounce & Instant Catalog Filter
   let searchTimer;
   $('#global-search-input').on('keyup', function() {
     clearTimeout(searchTimer);
@@ -41,40 +41,50 @@ $(document).ready(function() {
     }
   });
 
-  // 4. jQuery AJAX PUT Request for Student Profile Update
+  // 4. jQuery AJAX PUT Request for Student / Faculty Profile Update
   $('#student-profile-form').on('submit', function(e) {
     e.preventDefault();
 
     const profileData = {
       name: $('#profile-name-input').val(),
       major: $('#profile-major-input').val(),
+      departmentOrMajor: $('#profile-major-input').val(),
+      title: $('#profile-title-input').val(),
+      officeHours: $('#profile-office-input').val(),
       bio: $('#profile-bio-input').val(),
       learningGoals: $('#profile-goals-input').val()
     };
 
-    const $submitBtn = $(this).find('button[type="submit"]');
+    const $submitBtn = $('#btn-save-profile');
     $submitBtn.prop('disabled', true).text('Updating Profile...');
+
+    const userId = window.portalApp ? window.portalApp.currentUser.id : 'usr-student-1';
 
     // jQuery $.ajax with JSON payload (PUT method)
     $.ajax({
       url: '/api/student/profile',
       type: 'PUT',
       contentType: 'application/json',
+      headers: {
+        'x-user-id': userId
+      },
       data: JSON.stringify(profileData),
       dataType: 'json',
       success: function(response) {
         $submitBtn.prop('disabled', false).text('Save Profile Changes');
         if (response.success) {
-          window.portalApp.showToast('Profile updated successfully!', 'success');
-          // Update DOM directly
-          $('.student-badge-name').text(response.data.name);
-          $('#display-student-name').text(response.data.name);
-          $('#display-student-major').text(response.data.major);
+          if (window.portalApp) {
+            window.portalApp.currentUser = { ...window.portalApp.currentUser, ...response.data };
+            window.portalApp.saveSession(window.portalApp.currentUser);
+            window.portalApp.showToast('Profile updated successfully!', 'success');
+          }
         }
       },
       error: function(xhr, status, error) {
         $submitBtn.prop('disabled', false).text('Save Profile Changes');
-        window.portalApp.showToast('Failed to update profile: ' + error, 'error');
+        if (window.portalApp) {
+          window.portalApp.showToast('Failed to update profile: ' + error, 'error');
+        }
       }
     });
   });
@@ -83,10 +93,14 @@ $(document).ready(function() {
   $('#btn-trigger-xml-validate').on('click', function() {
     const xmlText = $('#xml-validator-input').val();
     if (!xmlText.trim()) {
-      window.portalApp.showToast('Please enter or paste XML content to validate.', 'error');
+      if (window.portalApp) {
+        window.portalApp.showToast('Please enter or paste XML content to validate.', 'error');
+      }
       return;
     }
-    window.xmlCurriculumManager.validateXmlContent(xmlText);
+    if (window.xmlCurriculumManager) {
+      window.xmlCurriculumManager.validateXmlContent(xmlText);
+    }
   });
 
   // 6. Reset XML content in editor
@@ -94,7 +108,9 @@ $(document).ready(function() {
     if (window.xmlCurriculumManager && window.xmlCurriculumManager.rawXmlText) {
       $('#xml-validator-input').val(window.xmlCurriculumManager.rawXmlText);
       $('#xml-validation-status').hide();
-      window.portalApp.showToast('Reset editor to canonical curriculum XML.', 'success');
+      if (window.portalApp) {
+        window.portalApp.showToast('Reset editor to canonical curriculum XML.', 'success');
+      }
     }
   });
 

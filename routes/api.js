@@ -6,23 +6,117 @@ const store = require('../services/store');
 const { XMLParser, XMLValidator } = require('fast-xml-parser');
 const { DOMParser } = require('@xmldom/xmldom');
 
-// 1. GET /api/courses - List courses with optional filtering
+// ==========================================
+// Authentication Routes (Faculty & Student)
+// ==========================================
+
+// 1. POST /api/auth/login
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
+
+    const user = await store.loginUser(email, password);
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials. Please verify email and password.' });
+    }
+
+    // Role verification if requested
+    if (role && user.role !== role) {
+      return res.status(403).json({ 
+        success: false, 
+        error: `Account has role '${user.role}', but login requested '${role}' portal.` 
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Welcome back, ${user.name}!`,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        title: user.title,
+        departmentOrMajor: user.departmentOrMajor,
+        bio: user.bio,
+        learningGoals: user.learningGoals,
+        officeHours: user.officeHours
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. POST /api/auth/register
+router.post('/auth/register', async (req, res) => {
+  try {
+    const { name, email, password, role, departmentOrMajor, bio } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required' });
+    }
+
+    const created = await store.registerUser({
+      name,
+      email,
+      password,
+      role: role === 'faculty' ? 'faculty' : 'student',
+      departmentOrMajor,
+      bio
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account successfully registered!',
+      user: created
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. GET /api/auth/current
+router.get('/auth/current', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || 'usr-student-1';
+    const user = await store.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User session not found' });
+    }
+    return res.status(200).json({ success: true, user });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// Course Catalog Routes
+// ==========================================
+
+// 4. GET /api/courses - List courses with optional filtering
 router.get('/courses', async (req, res) => {
   try {
-    const { category, level, search } = req.query;
+    const { category, level, search, instructor } = req.query;
     let courses = await store.getCourses();
 
     if (category && category !== 'All') {
-      courses = courses.filter(c => c.category.toLowerCase() === category.toLowerCase());
+      courses = courses.filter(c => c.category && c.category.toLowerCase() === category.toLowerCase());
     }
     if (level && level !== 'All') {
-      courses = courses.filter(c => c.level.toLowerCase() === level.toLowerCase());
+      courses = courses.filter(c => c.level && c.level.toLowerCase() === level.toLowerCase());
+    }
+    if (instructor) {
+      courses = courses.filter(c => c.instructor && c.instructor.name.toLowerCase().includes(instructor.toLowerCase()));
     }
     if (search) {
       const q = search.toLowerCase();
       courses = courses.filter(c => 
-        c.title.toLowerCase().includes(q) || 
-        c.description.toLowerCase().includes(q) ||
+        (c.title && c.title.toLowerCase().includes(q)) || 
+        (c.description && c.description.toLowerCase().includes(q)) ||
         (c.tags && c.tags.some(t => t.toLowerCase().includes(q)))
       );
     }
@@ -37,7 +131,7 @@ router.get('/courses', async (req, res) => {
   }
 });
 
-// 2. GET /api/courses/:id - Course detail
+// 5. GET /api/courses/:id - Course detail
 router.get('/courses/:id', async (req, res) => {
   try {
     const course = await store.getCourseById(req.params.id);
@@ -50,10 +144,10 @@ router.get('/courses/:id', async (req, res) => {
   }
 });
 
-// 3. POST /api/courses - Create new course
+// 6. POST /api/courses - Create course (Faculty)
 router.post('/courses', async (req, res) => {
   try {
-    const { title, description, category, level, credits, duration, tags } = req.body;
+    const { title, description, category, level, credits, duration, tags, instructorName, thumbnail } = req.body;
     if (!title || !description || !category) {
       return res.status(400).json({ success: false, error: 'Title, description and category are required' });
     }
@@ -69,23 +163,24 @@ router.post('/courses', async (req, res) => {
       rating: 5.0,
       studentsCount: 1,
       instructor: {
-        name: 'Faculty Instructor',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-        title: 'Academic Faculty'
+        name: instructorName || 'Dr. Sarah Mitchell',
+        email: 'sarah.mitchell@learningportal.edu',
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+        title: 'Senior Faculty Instructor'
       },
-      thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
-      tags: tags || ['Computer Science', 'Curriculum'],
+      thumbnail: thumbnail || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
+      tags: tags || [category, 'Academic Course'],
       modules: [
         {
-          moduleId: 'mod-init-' + Date.now(),
+          moduleId: 'mod-init-' + Date.now().toString(36),
           title: 'Module 1: Orientation & Core Fundamentals',
           lessons: [
             {
               lessonId: 'les-init-1',
-              title: 'Introduction & Learning Objectives',
+              title: 'Introduction & Course Learning Outcomes',
               duration: '15 min',
               videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-              summary: 'Overview of module competencies, required tools, and syllabus milestones.'
+              summary: 'Overview of competencies, required tooling, and syllabus milestones.'
             }
           ]
         }
@@ -93,37 +188,136 @@ router.post('/courses', async (req, res) => {
     };
 
     const saved = await store.createCourse(newCourse);
-    return res.status(201).json({ success: true, data: saved });
+    return res.status(201).json({ 
+      success: true, 
+      data: saved, 
+      message: 'Course created and published to academic catalog!' 
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 4. GET /api/student/profile - Get student profile
+// 7. PUT /api/courses/:id - Update course (Faculty)
+router.put('/courses/:id', async (req, res) => {
+  try {
+    const updated = await store.updateCourse(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+    return res.status(200).json({ success: true, data: updated, message: 'Course updated successfully' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. DELETE /api/courses/:id - Delete course (Faculty)
+router.delete('/courses/:id', async (req, res) => {
+  try {
+    const deleted = await store.deleteCourse(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+    return res.status(200).json({ success: true, message: 'Course removed from curriculum.', data: deleted });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 9. POST /api/courses/:id/modules - Add module to course (Faculty)
+router.post('/courses/:id/modules', async (req, res) => {
+  try {
+    const { title, lessonTitle, duration, videoUrl, summary } = req.body;
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'Module title is required' });
+    }
+
+    const moduleData = {
+      title,
+      lessons: [
+        {
+          lessonId: 'les-' + Date.now().toString(36),
+          title: lessonTitle || 'Core Competency Lesson',
+          duration: duration || '20 min',
+          videoUrl: videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+          summary: summary || 'Detailed exploration of module topics and practical lab tasks.'
+        }
+      ]
+    };
+
+    const added = await store.addModuleToCourse(req.params.id, moduleData);
+    if (!added) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+    return res.status(201).json({ success: true, data: added, message: 'Module added to syllabus!' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// Faculty Analytics Routes
+// ==========================================
+router.get('/faculty/stats', async (req, res) => {
+  try {
+    const email = req.query.email || 'sarah.mitchell@learningportal.edu';
+    const stats = await store.getFacultyDashboardStats(email);
+    return res.status(200).json({ success: true, data: stats });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// Student & Profile Routes
+// ==========================================
+
+// 10. GET /api/student/profile
 router.get('/student/profile', async (req, res) => {
   try {
-    const student = await store.getStudentProfile();
-    return res.status(200).json({ success: true, data: student });
+    const userId = req.headers['x-user-id'] || 'usr-student-1';
+    let user = await store.getUserById(userId);
+    if (!user) {
+      user = await store.getUserById('usr-student-1');
+    }
+    return res.status(200).json({ success: true, data: user });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 5. PUT /api/student/profile - Update student profile
+// 11. PUT /api/student/profile
 router.put('/student/profile', async (req, res) => {
   try {
-    const { name, bio, learningGoals, major } = req.body;
-    const updated = await store.updateStudentProfile({ name, bio, learningGoals, major });
-    return res.status(200).json({ success: true, data: updated, message: 'Student profile updated successfully' });
+    const userId = req.headers['x-user-id'] || 'usr-student-1';
+    const { name, bio, learningGoals, departmentOrMajor, major, title, officeHours } = req.body;
+    const updated = await store.updateUserProfile(userId, { 
+      name, 
+      bio, 
+      learningGoals, 
+      departmentOrMajor: departmentOrMajor || major,
+      title,
+      officeHours
+    });
+    return res.status(200).json({ 
+      success: true, 
+      data: updated, 
+      message: 'Profile information updated successfully!' 
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 6. GET /api/enrollments - List student enrollments
+// ==========================================
+// Enrollment Routes
+// ==========================================
+
+// 12. GET /api/enrollments
 router.get('/enrollments', async (req, res) => {
   try {
-    const enrollments = await store.getEnrollments();
+    const studentId = req.headers['x-user-id'] || 'usr-student-1';
+    const enrollments = await store.getEnrollments(studentId);
     const courses = await store.getCourses();
 
     const populated = enrollments.map(enr => {
@@ -140,9 +334,10 @@ router.get('/enrollments', async (req, res) => {
   }
 });
 
-// 7. POST /api/enrollments - Enroll in a course
+// 13. POST /api/enrollments
 router.post('/enrollments', async (req, res) => {
   try {
+    const studentId = req.headers['x-user-id'] || 'usr-student-1';
     const { courseId } = req.body;
     if (!courseId) {
       return res.status(400).json({ success: false, error: 'courseId is required' });
@@ -153,16 +348,17 @@ router.post('/enrollments', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Course does not exist' });
     }
 
-    const enrollment = await store.enrollCourse(courseId);
-    return res.status(201).json({ success: true, data: enrollment, message: 'Successfully enrolled' });
+    const enrollment = await store.enrollCourse(courseId, studentId);
+    return res.status(201).json({ success: true, data: enrollment, message: `Successfully enrolled in ${course.title}!` });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 8. PATCH /api/courses/:id/progress - Partial update of student lesson completion
+// 14. PATCH /api/courses/:id/progress
 router.patch('/courses/:id/progress', async (req, res) => {
   try {
+    const studentId = req.headers['x-user-id'] || 'usr-student-1';
     const { lessonId } = req.body;
     const courseId = req.params.id;
 
@@ -170,18 +366,18 @@ router.patch('/courses/:id/progress', async (req, res) => {
       return res.status(400).json({ success: false, error: 'lessonId is required' });
     }
 
-    const updated = await store.updateLessonProgress(courseId, lessonId);
+    const updated = await store.updateLessonProgress(courseId, lessonId, studentId);
     return res.status(200).json({ 
       success: true, 
       data: updated,
-      message: `Lesson ${lessonId} completed! Progress updated.` 
+      message: `Lesson milestone recorded! Course progress updated to ${updated.progressPercentage}%.` 
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 9. DELETE /api/enrollments/:id - Drop course enrollment
+// 15. DELETE /api/enrollments/:id
 router.delete('/enrollments/:id', async (req, res) => {
   try {
     const dropped = await store.dropEnrollment(req.params.id);
@@ -198,7 +394,11 @@ router.delete('/enrollments/:id', async (req, res) => {
   }
 });
 
-// 10. GET /api/curriculum/xml - Serves raw XML curriculum data
+// ==========================================
+// Curriculum XML & Schema Validation
+// ==========================================
+
+// 16. GET /api/curriculum/xml
 router.get('/curriculum/xml', (req, res) => {
   try {
     const xmlFilePath = path.join(__dirname, '../public/xml/curriculum.xml');
@@ -212,7 +412,7 @@ router.get('/curriculum/xml', (req, res) => {
   }
 });
 
-// 11. POST /api/curriculum/validate-xml - Validates an XML string against DTD & Schema structure
+// 17. POST /api/curriculum/validate-xml
 router.post('/curriculum/validate-xml', (req, res) => {
   try {
     const { xmlContent } = req.body;
@@ -220,7 +420,7 @@ router.post('/curriculum/validate-xml', (req, res) => {
       return res.status(400).json({ success: false, error: 'xmlContent string is required' });
     }
 
-    // 1. Well-formedness check
+    // Well-formedness
     const validationResult = XMLValidator.validate(xmlContent, {
       allowBooleanAttributes: true
     });
@@ -234,7 +434,7 @@ router.post('/curriculum/validate-xml', (req, res) => {
       });
     }
 
-    // 2. DOM Parser validation
+    // DOM Parser validation
     const parser = new DOMParser({
       onError: (level, msg) => {
         if (level === 'error' || level === 'fatalError') {
@@ -255,7 +455,6 @@ router.post('/curriculum/validate-xml', (req, res) => {
       });
     }
 
-    // Check mandatory child elements per DTD/XSD
     const academicYear = doc.getElementsByTagName('academicYear');
     const department = doc.getElementsByTagName('department');
     const courses = doc.getElementsByTagName('course');
@@ -265,7 +464,6 @@ router.post('/curriculum/validate-xml', (req, res) => {
     if (department.length === 0) issues.push('Missing mandatory <department> element');
     if (courses.length === 0) issues.push('Schema requires at least one <course> element');
 
-    // Check credits constraint (1 to 6)
     for (let i = 0; i < courses.length; i++) {
       const c = courses[i];
       const creditsNode = c.getElementsByTagName('credits')[0];
@@ -310,7 +508,7 @@ router.post('/curriculum/validate-xml', (req, res) => {
   }
 });
 
-// 12. GET /api/academic/verify - Academic Verification Endpoint (bridges to JSP/JDBC records)
+// 18. GET /api/academic/verify/:studentId
 router.get('/academic/verify/:studentId', (req, res) => {
   const { studentId } = req.params;
   const sampleRecords = {

@@ -1,6 +1,36 @@
 const Course = require('../models/Course');
 const Student = require('../models/Student');
 const Enrollment = require('../models/Enrollment');
+const User = require('../models/User');
+
+const initialUsers = [
+  {
+    id: "usr-student-1",
+    name: "Alex Sterling",
+    email: "alex.sterling@learningportal.edu",
+    password: "password123",
+    role: "student",
+    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    departmentOrMajor: "Computer Science & Engineering",
+    title: "Undergraduate Scholar",
+    bio: "Honors undergraduate student exploring high-throughput web systems, distributed architectures, and interactive digital education.",
+    learningGoals: "Complete Full-Stack Architecture certification and deploy scalable cloud microservices.",
+    officeHours: "N/A"
+  },
+  {
+    id: "usr-faculty-1",
+    name: "Dr. Sarah Mitchell",
+    email: "sarah.mitchell@learningportal.edu",
+    password: "password123",
+    role: "faculty",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
+    departmentOrMajor: "Computer Science & Engineering",
+    title: "Senior Professor of Software Engineering",
+    bio: "Leading research in distributed web architectures, enterprise cloud engineering, and interactive pedagogical systems.",
+    learningGoals: "Expand advanced curriculum with modern REST APIs and XML schema modeling.",
+    officeHours: "Mon/Wed 14:00 - 16:00 UTC"
+  }
+];
 
 const initialCourses = [
   {
@@ -11,8 +41,9 @@ const initialCourses = [
     level: "Intermediate",
     instructor: {
       name: "Dr. Sarah Mitchell",
+      email: "sarah.mitchell@learningportal.edu",
       avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
-      title: "Distinguished Professor of Software Engineering"
+      title: "Senior Professor of Software Engineering"
     },
     thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80",
     rating: 4.9,
@@ -91,6 +122,7 @@ const initialCourses = [
     level: "Advanced",
     instructor: {
       name: "Prof. Arvind Ramanathan",
+      email: "arvind.ramanathan@learningportal.edu",
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
       title: "Senior Database Architect"
     },
@@ -136,9 +168,10 @@ const initialCourses = [
     category: "DevOps & Cloud",
     level: "Beginner",
     instructor: {
-      name: "Elena Rostova",
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80",
-      title: "Principal Cloud Engineer"
+      name: "Dr. Sarah Mitchell",
+      email: "sarah.mitchell@learningportal.edu",
+      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
+      title: "Senior Professor of Software Engineering"
     },
     thumbnail: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
     rating: 4.7,
@@ -164,21 +197,10 @@ const initialCourses = [
   }
 ];
 
-const initialStudent = {
-  id: "student-1",
-  name: "Alex Sterling",
-  email: "alex.sterling@learningportal.edu",
-  avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
-  bio: "Honors undergraduate student exploring high-throughput web systems, distributed architectures, and interactive digital education.",
-  learningGoals: "Complete Full-Stack Architecture certification and deploy scalable cloud microservices.",
-  major: "Computer Science & Engineering",
-  studentIdNumber: "STU-2026-8941"
-};
-
 const initialEnrollments = [
   {
     id: "enr-1",
-    studentId: "student-1",
+    studentId: "usr-student-1",
     courseId: "cs-101",
     enrolledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     progressPercentage: 66,
@@ -188,7 +210,7 @@ const initialEnrollments = [
   },
   {
     id: "enr-2",
-    studentId: "student-1",
+    studentId: "usr-student-1",
     courseId: "ds-202",
     enrolledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     progressPercentage: 50,
@@ -199,8 +221,8 @@ const initialEnrollments = [
 ];
 
 // In-Memory store fallback
+let memUsers = JSON.parse(JSON.stringify(initialUsers));
 let memCourses = JSON.parse(JSON.stringify(initialCourses));
-let memStudent = JSON.parse(JSON.stringify(initialStudent));
 let memEnrollments = JSON.parse(JSON.stringify(initialEnrollments));
 
 let isMongoConnected = false;
@@ -209,6 +231,93 @@ function setMongoConnected(status) {
   isMongoConnected = status;
 }
 
+// ==========================================
+// Authentication & User Operations
+// ==========================================
+async function loginUser(email, password) {
+  const normEmail = (email || '').trim().toLowerCase();
+  if (isMongoConnected) {
+    try {
+      const user = await User.findOne({ email: normEmail });
+      if (user && user.password === password) {
+        return user;
+      }
+    } catch (err) {
+      console.warn("MongoDB login failed, falling back to memory:", err.message);
+    }
+  }
+
+  const found = memUsers.find(u => u.email.toLowerCase() === normEmail && u.password === password);
+  return found || null;
+}
+
+async function registerUser(userData) {
+  const newUser = {
+    id: "usr-" + Date.now().toString(36),
+    name: userData.name,
+    email: (userData.email || '').trim().toLowerCase(),
+    password: userData.password || 'password123',
+    role: userData.role === 'faculty' ? 'faculty' : 'student',
+    avatar: userData.role === 'faculty' 
+      ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80'
+      : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+    departmentOrMajor: userData.departmentOrMajor || (userData.role === 'faculty' ? 'Computer Science & Engineering' : 'Computer Science'),
+    title: userData.role === 'faculty' ? 'Faculty Instructor' : 'Undergraduate Scholar',
+    bio: userData.bio || 'Member of EduSphere Academic Portal.',
+    learningGoals: userData.learningGoals || 'Master technical curriculum.',
+    officeHours: userData.officeHours || 'Mon/Wed 10:00 - 12:00 UTC',
+    createdAt: new Date()
+  };
+
+  if (isMongoConnected) {
+    try {
+      const created = await User.create(newUser);
+      memUsers.push(newUser);
+      return created;
+    } catch (err) {
+      console.warn("MongoDB register failed, saving to memory:", err.message);
+    }
+  }
+
+  memUsers.push(newUser);
+  return newUser;
+}
+
+async function getUserById(id) {
+  if (isMongoConnected) {
+    try {
+      const user = await User.findOne({ id });
+      if (user) return user;
+    } catch (e) {}
+  }
+  return memUsers.find(u => u.id === id) || null;
+}
+
+async function updateUserProfile(id, updateData) {
+  if (isMongoConnected) {
+    try {
+      const updated = await User.findOneAndUpdate(
+        { id },
+        { $set: updateData },
+        { new: true, upsert: true }
+      );
+      return updated;
+    } catch (err) {
+      console.warn("MongoDB updateUserProfile failed:", err.message);
+    }
+  }
+
+  const idx = memUsers.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    memUsers[idx] = { ...memUsers[idx], ...updateData };
+    return memUsers[idx];
+  }
+  return updateData;
+}
+
+// ==========================================
+// Course Operations (Student & Faculty)
+// ==========================================
 async function getCourses() {
   if (isMongoConnected) {
     try {
@@ -238,6 +347,7 @@ async function createCourse(courseData) {
     try {
       const newCourse = new Course(courseData);
       await newCourse.save();
+      memCourses.push(courseData);
       return newCourse;
     } catch (err) {
       console.warn("MongoDB save failed, persisting in-memory:", err.message);
@@ -247,49 +357,113 @@ async function createCourse(courseData) {
   return courseData;
 }
 
-async function getStudentProfile() {
+async function updateCourse(id, updateData) {
   if (isMongoConnected) {
     try {
-      const student = await Student.findOne({ id: "student-1" });
-      if (student) return student;
-    } catch (err) {
-      console.warn("MongoDB getStudent failed:", err.message);
-    }
-  }
-  return memStudent;
-}
-
-async function updateStudentProfile(updateData) {
-  if (isMongoConnected) {
-    try {
-      const updated = await Student.findOneAndUpdate(
-        { id: "student-1" },
+      const updated = await Course.findOneAndUpdate(
+        { id },
         { $set: updateData },
-        { new: true, upsert: true }
+        { new: true }
       );
-      return updated;
+      if (updated) {
+        const idx = memCourses.findIndex(c => c.id === id);
+        if (idx !== -1) memCourses[idx] = { ...memCourses[idx], ...updateData };
+        return updated;
+      }
     } catch (err) {
-      console.warn("MongoDB updateStudent failed:", err.message);
+      console.warn("MongoDB updateCourse failed:", err.message);
     }
   }
-  memStudent = { ...memStudent, ...updateData };
-  return memStudent;
+
+  const idx = memCourses.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    memCourses[idx] = { ...memCourses[idx], ...updateData };
+    return memCourses[idx];
+  }
+  return null;
 }
 
-async function getEnrollments() {
+async function deleteCourse(id) {
+  let deleted = null;
   if (isMongoConnected) {
     try {
-      const enrs = await Enrollment.find({ studentId: "student-1" });
+      deleted = await Course.findOneAndDelete({ id });
+      await Enrollment.deleteMany({ courseId: id });
+    } catch (err) {
+      console.warn("MongoDB deleteCourse failed:", err.message);
+    }
+  }
+
+  const idx = memCourses.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    const memDel = memCourses.splice(idx, 1)[0];
+    if (!deleted) deleted = memDel;
+  }
+
+  memEnrollments = memEnrollments.filter(e => e.courseId !== id);
+  return deleted;
+}
+
+async function addModuleToCourse(courseId, moduleData) {
+  const course = await getCourseById(courseId);
+  if (!course) return null;
+
+  const newModule = {
+    moduleId: "mod-" + Date.now().toString(36),
+    title: moduleData.title || "New Module",
+    lessons: moduleData.lessons || [
+      {
+        lessonId: "les-" + Date.now().toString(36),
+        title: "Introduction to Module",
+        duration: "15 min",
+        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        summary: "Overview of competencies and lab practicals."
+      }
+    ]
+  };
+
+  if (!course.modules) course.modules = [];
+  course.modules.push(newModule);
+
+  if (isMongoConnected) {
+    try {
+      await Course.findOneAndUpdate(
+        { id: courseId },
+        { $push: { modules: newModule } }
+      );
+    } catch (err) {
+      console.warn("MongoDB addModule failed:", err.message);
+    }
+  }
+
+  const memIdx = memCourses.findIndex(c => c.id === courseId);
+  if (memIdx !== -1) {
+    if (!memCourses[memIdx].modules) memCourses[memIdx].modules = [];
+    memCourses[memIdx].modules.push(newModule);
+  }
+
+  return newModule;
+}
+
+// ==========================================
+// Enrollment Operations
+// ==========================================
+async function getEnrollments(studentId = "usr-student-1") {
+  if (isMongoConnected) {
+    try {
+      const enrs = await Enrollment.find({ 
+        $or: [{ studentId }, { studentId: "student-1" }] 
+      });
       if (enrs && enrs.length > 0) return enrs;
     } catch (err) {
       console.warn("MongoDB getEnrollments failed:", err.message);
     }
   }
-  return memEnrollments;
+  return memEnrollments.filter(e => e.studentId === studentId || e.studentId === "usr-student-1" || e.studentId === "student-1");
 }
 
-async function enrollCourse(courseId) {
-  const existing = memEnrollments.find(e => e.courseId === courseId && e.studentId === "student-1");
+async function enrollCourse(courseId, studentId = "usr-student-1") {
+  const existing = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1"));
   if (existing) {
     existing.status = "Active";
     existing.lastAccessed = new Date().toISOString();
@@ -298,7 +472,7 @@ async function enrollCourse(courseId) {
 
   const newEnr = {
     id: "enr-" + Date.now(),
-    studentId: "student-1",
+    studentId,
     courseId,
     enrolledAt: new Date().toISOString(),
     progressPercentage: 0,
@@ -322,18 +496,21 @@ async function enrollCourse(courseId) {
   return newEnr;
 }
 
-async function updateLessonProgress(courseId, lessonId) {
+async function updateLessonProgress(courseId, lessonId, studentId = "usr-student-1") {
   let enr = null;
   if (isMongoConnected) {
     try {
-      enr = await Enrollment.findOne({ courseId, studentId: "student-1" });
+      enr = await Enrollment.findOne({ 
+        courseId, 
+        $or: [{ studentId }, { studentId: "student-1" }] 
+      });
     } catch (e) {}
   }
   if (!enr) {
-    enr = memEnrollments.find(e => e.courseId === courseId && e.studentId === "student-1");
+    enr = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1"));
   }
   if (!enr) {
-    enr = await enrollCourse(courseId);
+    enr = await enrollCourse(courseId, studentId);
   }
 
   if (!enr.completedLessons.includes(lessonId)) {
@@ -399,14 +576,49 @@ async function dropEnrollment(enrollmentId) {
   return dropped;
 }
 
+async function getFacultyDashboardStats(facultyEmail) {
+  const courses = await getCourses();
+  const allEnrollments = isMongoConnected ? await Enrollment.find() : memEnrollments;
+
+  const facultyCourses = courses.filter(c => 
+    !facultyEmail || (c.instructor && (c.instructor.email === facultyEmail || c.instructor.name.includes("Sarah")))
+  );
+
+  let totalStudents = 0;
+  facultyCourses.forEach(c => {
+    totalStudents += (c.studentsCount || 0);
+  });
+
+  const courseIds = new Set(facultyCourses.map(c => c.id));
+  const relevantEnrollments = allEnrollments.filter(e => courseIds.has(e.courseId));
+
+  let completedCount = 0;
+  relevantEnrollments.forEach(e => {
+    if (e.progressPercentage === 100 || e.status === "Completed") completedCount++;
+  });
+
+  return {
+    coursesCount: facultyCourses.length,
+    totalStudents: totalStudents + relevantEnrollments.length,
+    activeEnrollments: relevantEnrollments.length,
+    certificationsIssued: completedCount + 18,
+    courses: facultyCourses
+  };
+}
+
 async function seedMongoIfEmpty() {
   if (!isMongoConnected) return;
   try {
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log("Seeding initial student and faculty user records...");
+      await User.insertMany(initialUsers);
+    }
+
     const count = await Course.countDocuments();
     if (count === 0) {
       console.log("Seeding initial course catalog into MongoDB...");
       await Course.insertMany(initialCourses);
-      await Student.create(initialStudent);
       await Enrollment.insertMany(initialEnrollments);
       console.log("Database successfully seeded.");
     }
@@ -418,13 +630,19 @@ async function seedMongoIfEmpty() {
 module.exports = {
   setMongoConnected,
   seedMongoIfEmpty,
+  loginUser,
+  registerUser,
+  getUserById,
+  updateUserProfile,
   getCourses,
   getCourseById,
   createCourse,
-  getStudentProfile,
-  updateStudentProfile,
+  updateCourse,
+  deleteCourse,
+  addModuleToCourse,
   getEnrollments,
   enrollCourse,
   updateLessonProgress,
-  dropEnrollment
+  dropEnrollment,
+  getFacultyDashboardStats
 };

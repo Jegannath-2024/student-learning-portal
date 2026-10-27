@@ -256,12 +256,63 @@ router.post('/courses/:id/modules', async (req, res) => {
 });
 
 // ==========================================
-// Faculty Analytics Routes
+// Faculty Specific Routes
 // ==========================================
+
+// GET /api/faculty/courses - Only courses handled by the logged in faculty
+router.get('/faculty/courses', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || 'usr-faculty-1';
+    const user = await store.getUserById(userId);
+    const facultyEmail = user ? user.email : 'faculty@edusphere.edu';
+    const facultyName = user ? user.name : 'Dr. Sarah Mitchell';
+
+    const courses = await store.getCoursesByFaculty(facultyEmail, facultyName);
+    return res.status(200).json({ success: true, count: courses.length, data: courses });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /api/courses/:id/modules/:moduleId/lessons/:lessonId/video - Upload / update lesson video
+router.patch('/courses/:id/modules/:moduleId/lessons/:lessonId/video', async (req, res) => {
+  try {
+    const { videoUrl, summary } = req.body;
+    if (!videoUrl) {
+      return res.status(400).json({ success: false, error: 'videoUrl is required' });
+    }
+
+    const updated = await store.updateLessonVideo(
+      req.params.id,
+      req.params.moduleId,
+      req.params.lessonId,
+      videoUrl,
+      summary
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Course, module, or lesson not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Lesson video updated and published successfully!',
+      data: updated
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/faculty/stats', async (req, res) => {
   try {
-    const email = req.query.email || 'sarah.mitchell@learningportal.edu';
-    const stats = await store.getFacultyDashboardStats(email);
+    const userId = req.headers['x-user-id'];
+    let user = null;
+    if (userId) user = await store.getUserById(userId);
+    const email = (user && user.email) || req.query.email || 'faculty@edusphere.edu';
+    const name = (user && user.name) || req.query.name || 'Dr. Sarah Mitchell';
+
+    const stats = await store.getFacultyDashboardStats(email, name);
     return res.status(200).json({ success: true, data: stats });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

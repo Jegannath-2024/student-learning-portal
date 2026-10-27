@@ -3,35 +3,37 @@ const Student = require('../models/Student');
 const Enrollment = require('../models/Enrollment');
 const User = require('../models/User');
 
+// Exactly 1 student and 1 faculty
 const initialUsers = [
   {
     id: "usr-student-1",
     name: "Alex Sterling",
-    email: "alex.sterling@learningportal.edu",
+    email: "student@edusphere.edu",
     password: "password123",
     role: "student",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
     departmentOrMajor: "Computer Science & Engineering",
     title: "Undergraduate Scholar",
-    bio: "Honors undergraduate student exploring high-throughput web systems, distributed architectures, and interactive digital education.",
-    learningGoals: "Complete Full-Stack Architecture certification and deploy scalable cloud microservices.",
+    bio: "Honors student studying advanced web engineering, cloud computing, and distributed database architectures.",
+    learningGoals: "Complete certified technical milestones and software architecture competencies.",
     officeHours: "N/A"
   },
   {
     id: "usr-faculty-1",
     name: "Dr. Sarah Mitchell",
-    email: "sarah.mitchell@learningportal.edu",
+    email: "faculty@edusphere.edu",
     password: "password123",
     role: "faculty",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
     departmentOrMajor: "Computer Science & Engineering",
-    title: "Senior Professor of Software Engineering",
-    bio: "Leading research in distributed web architectures, enterprise cloud engineering, and interactive pedagogical systems.",
-    learningGoals: "Expand advanced curriculum with modern REST APIs and XML schema modeling.",
+    title: "Professor of Software Engineering",
+    bio: "Lead Faculty Instructor for Advanced Web Engineering and Distributed Cloud Systems.",
+    learningGoals: "Deliver rigorous curriculum with verified lab practicals.",
     officeHours: "Mon/Wed 14:00 - 16:00 UTC"
   }
 ];
 
+// Single canonical course authored by Dr. Sarah Mitchell (no dummy courses)
 const initialCourses = [
   {
     id: "cs-101",
@@ -41,16 +43,16 @@ const initialCourses = [
     level: "Intermediate",
     instructor: {
       name: "Dr. Sarah Mitchell",
-      email: "sarah.mitchell@learningportal.edu",
+      email: "faculty@edusphere.edu",
       avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
-      title: "Senior Professor of Software Engineering"
+      title: "Professor of Software Engineering"
     },
     thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80",
     rating: 4.9,
-    studentsCount: 1420,
+    studentsCount: 340,
     credits: 4,
     duration: "10 Weeks",
-    tags: ["Web Dev", "REST APIs", "Modern Cloud"],
+    tags: ["Web Engineering", "REST APIs", "Modern Cloud"],
     modules: [
       {
         moduleId: "mod-1",
@@ -91,107 +93,6 @@ const initialCourses = [
             summary: "Manipulate DOM nodes safely and listen to delegated events without unnecessary re-renders."
           }
         ]
-      },
-      {
-        moduleId: "mod-3",
-        title: "Module 3: Asynchronous RESTful Integration & Structured Payloads",
-        lessons: [
-          {
-            lessonId: "les-301",
-            title: "Asynchronous Data Fetching with AJAX & JSON",
-            duration: "28 min",
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-            summary: "Build decoupled frontend-backend communication using HTTP methods and structured JSON."
-          },
-          {
-            lessonId: "les-302",
-            title: "Curriculum Schema Modeling & XML Validation",
-            duration: "18 min",
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
-            summary: "Validate enterprise data exchange formats using DTD declarations and XML Schema definitions."
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: "ds-202",
-    title: "Database Systems: Document & Relational Modeling",
-    description: "Deep dive into relational database design, indexing, JDBC transaction handling, and document-oriented MongoDB persistence.",
-    category: "Data Science",
-    level: "Advanced",
-    instructor: {
-      name: "Prof. Arvind Ramanathan",
-      email: "arvind.ramanathan@learningportal.edu",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
-      title: "Senior Database Architect"
-    },
-    thumbnail: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?auto=format&fit=crop&w=600&q=80",
-    rating: 4.8,
-    studentsCount: 980,
-    credits: 3,
-    duration: "8 Weeks",
-    tags: ["Databases", "Document Stores", "SQL & NoSQL"],
-    modules: [
-      {
-        moduleId: "mod-ds1",
-        title: "Module 1: Relational Algebra & JDBC Architecture",
-        lessons: [
-          {
-            lessonId: "les-ds101",
-            title: "Connection Pools & Prepared Statements",
-            duration: "20 min",
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-            summary: "Optimize database throughput and prevent SQL injection with parameterized JDBC drivers."
-          }
-        ]
-      },
-      {
-        moduleId: "mod-ds2",
-        title: "Module 2: Document Hierarchies with MongoDB",
-        lessons: [
-          {
-            lessonId: "les-ds201",
-            title: "Flexible Schemas & BSON Document Storage",
-            duration: "30 min",
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-            summary: "Model nested documents, aggregate pipelines, and atomic updates for high-scale applications."
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: "se-303",
-    title: "Cloud Deployment & Serverless Microservices",
-    description: "Master modern continuous deployment workflows across Vercel and Render with production monitoring, environment pipelines, and microservice decoupling.",
-    category: "DevOps & Cloud",
-    level: "Beginner",
-    instructor: {
-      name: "Dr. Sarah Mitchell",
-      email: "sarah.mitchell@learningportal.edu",
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
-      title: "Senior Professor of Software Engineering"
-    },
-    thumbnail: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
-    rating: 4.7,
-    studentsCount: 1650,
-    credits: 3,
-    duration: "6 Weeks",
-    tags: ["DevOps", "Cloud", "Serverless"],
-    modules: [
-      {
-        moduleId: "mod-se1",
-        title: "Module 1: Cloud Runtimes & Container Foundations",
-        lessons: [
-          {
-            lessonId: "les-se101",
-            title: "Deploying Web Services to Render and Edge CDNs to Vercel",
-            duration: "24 min",
-            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-            summary: "Configure environment variables, automated git deploys, and custom domain routings."
-          }
-        ]
       }
     ]
   }
@@ -203,18 +104,8 @@ const initialEnrollments = [
     studentId: "usr-student-1",
     courseId: "cs-101",
     enrolledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    progressPercentage: 66,
-    completedLessons: ["les-101", "les-102", "les-201", "les-202"],
-    status: "Active",
-    lastAccessed: new Date().toISOString()
-  },
-  {
-    id: "enr-2",
-    studentId: "usr-student-1",
-    courseId: "ds-202",
-    enrolledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     progressPercentage: 50,
-    completedLessons: ["les-ds101"],
+    completedLessons: ["les-101", "les-102"],
     status: "Active",
     lastAccessed: new Date().toISOString()
   }
@@ -232,13 +123,22 @@ function setMongoConnected(status) {
 }
 
 // ==========================================
-// Authentication & User Operations
+// User Operations
 // ==========================================
 async function loginUser(email, password) {
-  const normEmail = (email || '').trim().toLowerCase();
+  let normEmail = (email || '').trim().toLowerCase();
+  // Support both clean aliases
+  if (normEmail === 'alex.sterling@learningportal.edu') normEmail = 'student@edusphere.edu';
+  if (normEmail === 'sarah.mitchell@learningportal.edu') normEmail = 'faculty@edusphere.edu';
+
   if (isMongoConnected) {
     try {
-      const user = await User.findOne({ email: normEmail });
+      const user = await User.findOne({ 
+        $or: [
+          { email: normEmail },
+          { email: (email || '').trim().toLowerCase() }
+        ]
+      });
       if (user && user.password === password) {
         return user;
       }
@@ -247,7 +147,10 @@ async function loginUser(email, password) {
     }
   }
 
-  const found = memUsers.find(u => u.email.toLowerCase() === normEmail && u.password === password);
+  const found = memUsers.find(u => 
+    (u.email.toLowerCase() === normEmail || u.email.toLowerCase() === (email || '').trim().toLowerCase()) && 
+    u.password === password
+  );
   return found || null;
 }
 
@@ -316,7 +219,7 @@ async function updateUserProfile(id, updateData) {
 }
 
 // ==========================================
-// Course Operations (Student & Faculty)
+// Course Operations
 // ==========================================
 async function getCourses() {
   if (isMongoConnected) {
@@ -340,6 +243,23 @@ async function getCourseById(id) {
     }
   }
   return memCourses.find(c => c.id === id) || null;
+}
+
+// Return only courses handled by this specific faculty member
+async function getCoursesByFaculty(facultyEmail, facultyName) {
+  const all = await getCourses();
+  const fEmail = (facultyEmail || '').trim().toLowerCase();
+  const fName = (facultyName || '').trim().toLowerCase();
+
+  return all.filter(c => {
+    if (!c.instructor) return false;
+    const instEmail = (c.instructor.email || '').trim().toLowerCase();
+    const instName = (c.instructor.name || '').trim().toLowerCase();
+
+    const matchesEmail = fEmail && (instEmail === fEmail || (fEmail.includes('faculty') && instEmail.includes('faculty')));
+    const matchesName = fName && (instName === fName || instName.includes('mitchell'));
+    return matchesEmail || matchesName;
+  });
 }
 
 async function createCourse(courseData) {
@@ -414,10 +334,10 @@ async function addModuleToCourse(courseId, moduleData) {
     lessons: moduleData.lessons || [
       {
         lessonId: "les-" + Date.now().toString(36),
-        title: "Introduction to Module",
-        duration: "15 min",
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        summary: "Overview of competencies and lab practicals."
+        title: moduleData.lessonTitle || "Module Core Competency Lecture",
+        duration: moduleData.duration || "20 min",
+        videoUrl: moduleData.videoUrl || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        summary: moduleData.summary || "In-depth lecture session and practical laboratory walkthrough."
       }
     ]
   };
@@ -429,7 +349,7 @@ async function addModuleToCourse(courseId, moduleData) {
     try {
       await Course.findOneAndUpdate(
         { id: courseId },
-        { $push: { modules: newModule } }
+        { $set: { modules: course.modules } }
       );
     } catch (err) {
       console.warn("MongoDB addModule failed:", err.message);
@@ -438,11 +358,50 @@ async function addModuleToCourse(courseId, moduleData) {
 
   const memIdx = memCourses.findIndex(c => c.id === courseId);
   if (memIdx !== -1) {
-    if (!memCourses[memIdx].modules) memCourses[memIdx].modules = [];
-    memCourses[memIdx].modules.push(newModule);
+    memCourses[memIdx] = course;
   }
 
   return newModule;
+}
+
+// Update or upload video for a specific module and lesson
+async function updateLessonVideo(courseId, moduleId, lessonId, videoUrl, summary) {
+  const course = await getCourseById(courseId);
+  if (!course || !course.modules) return null;
+
+  let updatedLesson = null;
+  for (let m of course.modules) {
+    if (!moduleId || m.moduleId === moduleId) {
+      for (let l of (m.lessons || [])) {
+        if (l.lessonId === lessonId) {
+          l.videoUrl = videoUrl;
+          if (summary) l.summary = summary;
+          updatedLesson = l;
+          break;
+        }
+      }
+    }
+  }
+
+  if (updatedLesson) {
+    if (isMongoConnected) {
+      try {
+        await Course.findOneAndUpdate(
+          { id: courseId },
+          { $set: { modules: course.modules } }
+        );
+      } catch (err) {
+        console.warn("MongoDB updateLessonVideo failed:", err.message);
+      }
+    }
+
+    const memIdx = memCourses.findIndex(c => c.id === courseId);
+    if (memIdx !== -1) {
+      memCourses[memIdx] = course;
+    }
+  }
+
+  return updatedLesson;
 }
 
 // ==========================================
@@ -452,7 +411,7 @@ async function getEnrollments(studentId = "usr-student-1") {
   if (isMongoConnected) {
     try {
       const enrs = await Enrollment.find({ 
-        $or: [{ studentId }, { studentId: "student-1" }] 
+        $or: [{ studentId }, { studentId: "student-1" }, { studentId: "usr-student-1" }] 
       });
       if (enrs && enrs.length > 0) return enrs;
     } catch (err) {
@@ -463,7 +422,7 @@ async function getEnrollments(studentId = "usr-student-1") {
 }
 
 async function enrollCourse(courseId, studentId = "usr-student-1") {
-  const existing = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1"));
+  const existing = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1" || e.studentId === "usr-student-1"));
   if (existing) {
     existing.status = "Active";
     existing.lastAccessed = new Date().toISOString();
@@ -502,12 +461,12 @@ async function updateLessonProgress(courseId, lessonId, studentId = "usr-student
     try {
       enr = await Enrollment.findOne({ 
         courseId, 
-        $or: [{ studentId }, { studentId: "student-1" }] 
+        $or: [{ studentId }, { studentId: "student-1" }, { studentId: "usr-student-1" }] 
       });
     } catch (e) {}
   }
   if (!enr) {
-    enr = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1"));
+    enr = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1" || e.studentId === "usr-student-1"));
   }
   if (!enr) {
     enr = await enrollCourse(courseId, studentId);
@@ -576,13 +535,9 @@ async function dropEnrollment(enrollmentId) {
   return dropped;
 }
 
-async function getFacultyDashboardStats(facultyEmail) {
-  const courses = await getCourses();
+async function getFacultyDashboardStats(facultyEmail, facultyName) {
+  const facultyCourses = await getCoursesByFaculty(facultyEmail, facultyName);
   const allEnrollments = isMongoConnected ? await Enrollment.find() : memEnrollments;
-
-  const facultyCourses = courses.filter(c => 
-    !facultyEmail || (c.instructor && (c.instructor.email === facultyEmail || c.instructor.name.includes("Sarah")))
-  );
 
   let totalStudents = 0;
   facultyCourses.forEach(c => {
@@ -601,29 +556,48 @@ async function getFacultyDashboardStats(facultyEmail) {
     coursesCount: facultyCourses.length,
     totalStudents: totalStudents + relevantEnrollments.length,
     activeEnrollments: relevantEnrollments.length,
-    certificationsIssued: completedCount + 18,
+    certificationsIssued: completedCount + 12,
     courses: facultyCourses
   };
 }
 
+// Clean up dummy courses from Atlas and ensure canonical accounts exist
 async function seedMongoIfEmpty() {
   if (!isMongoConnected) return;
   try {
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log("Seeding initial student and faculty user records...");
-      await User.insertMany(initialUsers);
+    // 1. Purge unwanted dummy courses ds-202 and se-303
+    await Course.deleteMany({ id: { $in: ['ds-202', 'se-303'] } });
+    await Enrollment.deleteMany({ courseId: { $in: ['ds-202', 'se-303'] } });
+
+    // 2. Ensure only 1 student and 1 faculty exist in User collection
+    for (const u of initialUsers) {
+      await User.findOneAndUpdate(
+        { email: u.email },
+        { $set: u },
+        { upsert: true, new: true }
+      );
     }
 
-    const count = await Course.countDocuments();
-    if (count === 0) {
-      console.log("Seeding initial course catalog into MongoDB...");
-      await Course.insertMany(initialCourses);
-      await Enrollment.insertMany(initialEnrollments);
-      console.log("Database successfully seeded.");
+    // 3. Ensure cs-101 course is preserved with Dr. Sarah Mitchell as instructor
+    const cs101 = await Course.findOne({ id: 'cs-101' });
+    if (!cs101) {
+      await Course.create(initialCourses[0]);
+    } else {
+      await Course.findOneAndUpdate(
+        { id: 'cs-101' },
+        { 
+          $set: { 
+            'instructor.email': 'faculty@edusphere.edu',
+            'instructor.name': 'Dr. Sarah Mitchell',
+            'instructor.title': 'Professor of Software Engineering'
+          } 
+        }
+      );
     }
+
+    console.log("Database synchronization: Canonical student, faculty, and authored courses active.");
   } catch (err) {
-    console.warn("MongoDB seed check skipped:", err.message);
+    console.warn("MongoDB sync notice:", err.message);
   }
 }
 
@@ -636,10 +610,12 @@ module.exports = {
   updateUserProfile,
   getCourses,
   getCourseById,
+  getCoursesByFaculty,
   createCourse,
   updateCourse,
   deleteCourse,
   addModuleToCourse,
+  updateLessonVideo,
   getEnrollments,
   enrollCourse,
   updateLessonProgress,

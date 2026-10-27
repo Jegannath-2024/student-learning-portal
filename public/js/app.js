@@ -1,7 +1,7 @@
 /**
  * Student Learning & Faculty Portal - Core Application Architecture
  * Object-Oriented JavaScript, Role-Based Access Control (Student vs Faculty),
- * HTML DOM Methods, HTML5 Canvas 2D Analytics & RESTful Operations
+ * HTML DOM Methods, Video Preview & Upload Engine, HTML5 Canvas 2D Analytics
  */
 
 // 1. Course Service Object - Encapsulates all REST API calls
@@ -20,6 +20,14 @@ class CourseService {
   async fetchCourseById(id) {
     const res = await fetch(`/api/courses/${id}`);
     if (!res.ok) throw new Error(`Failed to load course ${id}`);
+    return await res.json();
+  }
+
+  async fetchFacultyCourses() {
+    const res = await fetch('/api/faculty/courses', {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch faculty courses');
     return await res.json();
   }
 
@@ -49,6 +57,16 @@ class CourseService {
       body: JSON.stringify(moduleData)
     });
     if (!res.ok) throw new Error('Failed to add module');
+    return await res.json();
+  }
+
+  async updateLessonVideo(courseId, moduleId, lessonId, videoUrl, summary) {
+    const res = await fetch(`/api/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/video`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ videoUrl, summary })
+    });
+    if (!res.ok) throw new Error('Failed to update lesson video');
     return await res.json();
   }
 
@@ -126,7 +144,9 @@ class CourseService {
   }
 
   async fetchFacultyStats(email) {
-    const res = await fetch(`/api/faculty/stats?email=${encodeURIComponent(email || '')}`);
+    const res = await fetch(`/api/faculty/stats?email=${encodeURIComponent(email || '')}`, {
+      headers: this.getHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch faculty stats');
     return await res.json();
   }
@@ -309,9 +329,9 @@ class DomRenderer {
     const metrics = document.createElement('div');
     metrics.className = 'course-metrics';
     metrics.innerHTML = `
-      <span class="metric-item">★ ${course.rating || 4.8}</span>
+      <span class="metric-item">★ ${course.rating || 4.9}</span>
       <span class="metric-item">👥 ${course.studentsCount || 100}</span>
-      <span class="metric-item">⏳ ${course.duration || '6 Weeks'}</span>
+      <span class="metric-item">⏳ ${course.duration || '8 Weeks'}</span>
     `;
 
     const actionsWrap = document.createElement('div');
@@ -324,7 +344,6 @@ class DomRenderer {
     btnDetails.addEventListener('click', () => onViewDetails(course));
     actionsWrap.appendChild(btnDetails);
 
-    // If user is student, show Enroll button; if faculty, show View Classroom
     if (currentUser.role === 'student') {
       const btnEnroll = document.createElement('button');
       btnEnroll.className = 'btn-primary';
@@ -422,7 +441,7 @@ class DomRenderer {
     return card;
   }
 
-  static createFacultyCourseItem(course, onAddModule, onDelete, onPreview) {
+  static createFacultyCourseItem(course, onAddModule, onDelete, onPreview, onUploadVideo) {
     const item = document.createElement('div');
     item.className = 'faculty-course-item';
 
@@ -448,7 +467,7 @@ class DomRenderer {
       <h4 style="font-size:17px; font-weight:700; color:var(--text-main); margin-bottom:4px;">${course.title}</h4>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:6px;">${course.description}</p>
       <div style="font-size:12px; color:var(--text-light);">
-        📁 <strong>${moduleCount}</strong> Modules • 📖 <strong>${lessonCount}</strong> Lessons • 👥 <strong>${course.studentsCount || 0}</strong> Students
+        📁 <strong>${moduleCount}</strong> Modules • 📖 <strong>${lessonCount}</strong> Lessons • 👥 <strong>${course.studentsCount || 0}</strong> Students Enrolled
       </div>
     `;
 
@@ -457,6 +476,12 @@ class DomRenderer {
 
     const btnGroup = document.createElement('div');
     btnGroup.className = 'faculty-btn-group';
+
+    const btnVideo = document.createElement('button');
+    btnVideo.className = 'btn-primary';
+    btnVideo.style.cssText = 'padding:8px 14px; font-size:12px; background:linear-gradient(135deg, #4f46e5, #7c3aed);';
+    btnVideo.textContent = '📹 Upload / Preview Video';
+    btnVideo.addEventListener('click', () => onUploadVideo(course));
 
     const btnClassroom = document.createElement('button');
     btnClassroom.className = 'btn-secondary';
@@ -473,6 +498,7 @@ class DomRenderer {
     btnDel.textContent = '🗑️ Delete';
     btnDel.addEventListener('click', () => onDelete(course));
 
+    btnGroup.appendChild(btnVideo);
     btnGroup.appendChild(btnClassroom);
     btnGroup.appendChild(btnAddMod);
     btnGroup.appendChild(btnDel);
@@ -510,17 +536,17 @@ class StudentPortalApp {
       }
     } catch (e) {}
 
-    // Default student user
+    // Exactly 1 student default
     return {
       id: "usr-student-1",
       name: "Alex Sterling",
-      email: "alex.sterling@learningportal.edu",
+      email: "student@edusphere.edu",
       role: "student",
       avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
       title: "Undergraduate Scholar",
       departmentOrMajor: "Computer Science & Engineering",
-      bio: "Honors undergraduate student exploring high-throughput web systems, distributed architectures, and interactive digital education.",
-      learningGoals: "Complete Full-Stack Architecture certification and deploy scalable cloud microservices.",
+      bio: "Honors student studying advanced web engineering, cloud computing, and distributed database architectures.",
+      learningGoals: "Complete certified technical milestones and software architecture competencies.",
       officeHours: "N/A"
     };
   }
@@ -567,11 +593,13 @@ class StudentPortalApp {
     // Context-Aware navigation visibility
     const navDashboard = document.getElementById('nav-item-dashboard');
     const navFaculty = document.getElementById('nav-item-faculty');
+    const navAcademic = document.getElementById('nav-item-academic'); // Transcripts & Records
     const catalogBanner = document.getElementById('catalog-faculty-banner');
     const classroomFacultyWrap = document.getElementById('classroom-faculty-add-module-wrap');
 
     if (isFaculty) {
       if (navDashboard) navDashboard.style.display = 'none';
+      if (navAcademic) navAcademic.style.display = 'none'; // REMOVE TRANSCRIPTS FROM FACULTY LOGIN
       if (navFaculty) {
         navFaculty.style.display = 'block';
         navFaculty.querySelector('button').style.display = 'flex';
@@ -580,6 +608,7 @@ class StudentPortalApp {
       if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'block';
     } else {
       if (navDashboard) navDashboard.style.display = 'block';
+      if (navAcademic) navAcademic.style.display = 'block'; // Show Transcripts only for student
       if (navFaculty) navFaculty.style.display = 'none';
       if (catalogBanner) catalogBanner.style.display = 'none';
       if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'none';
@@ -632,12 +661,8 @@ class StudentPortalApp {
     const authModal = document.getElementById('auth-modal');
     const closeAuthBtn = document.getElementById('auth-modal-close-btn');
 
-    if (openAuthBtn && authModal) {
-      openAuthBtn.addEventListener('click', () => authModal.showModal());
-    }
-    if (closeAuthBtn && authModal) {
-      closeAuthBtn.addEventListener('click', () => authModal.close());
-    }
+    if (openAuthBtn && authModal) openAuthBtn.addEventListener('click', () => authModal.showModal());
+    if (closeAuthBtn && authModal) closeAuthBtn.addEventListener('click', () => authModal.close());
 
     // Auth Tabs switching
     const authTabs = document.querySelectorAll('.auth-nav-tab');
@@ -816,6 +841,94 @@ class StudentPortalApp {
       });
     }
 
+    // Video Upload & Preview Modal Handlers
+    const uploadModal = document.getElementById('video-upload-modal');
+    const closeUploadBtn = document.getElementById('video-upload-modal-close');
+    const cancelUploadBtn = document.getElementById('btn-cancel-upload-video');
+    const btnPreviewVideo = document.getElementById('btn-preview-video');
+    const videoUrlInput = document.getElementById('video-url-input');
+    const videoFilePicker = document.getElementById('video-file-picker');
+    const videoPreviewBox = document.getElementById('video-preview-box');
+    const videoPlayer = document.getElementById('video-modal-preview-player');
+    const videoStatus = document.getElementById('video-preview-status');
+    const formUploadVideo = document.getElementById('form-upload-video');
+
+    if (closeUploadBtn && uploadModal) {
+      closeUploadBtn.addEventListener('click', () => {
+        if (videoPlayer) videoPlayer.pause();
+        uploadModal.close();
+      });
+    }
+    if (cancelUploadBtn && uploadModal) {
+      cancelUploadBtn.addEventListener('click', () => {
+        if (videoPlayer) videoPlayer.pause();
+        uploadModal.close();
+      });
+    }
+
+    if (btnPreviewVideo && videoUrlInput && videoPlayer) {
+      btnPreviewVideo.addEventListener('click', () => {
+        const url = videoUrlInput.value.trim();
+        if (!url) {
+          this.showToast('Please enter a video URL to preview.', 'error');
+          return;
+        }
+        videoPlayer.src = url;
+        videoPreviewBox.style.display = 'block';
+        videoStatus.textContent = 'Loading video stream...';
+        videoPlayer.oncanplay = () => {
+          videoStatus.textContent = '✓ Video verified & ready to publish!';
+        };
+        videoPlayer.onerror = () => {
+          videoStatus.textContent = '⚠️ Could not load video URL. Check link.';
+        };
+        videoPlayer.play().catch(() => {});
+      });
+    }
+
+    if (videoFilePicker && videoPlayer && videoUrlInput) {
+      videoFilePicker.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const blobUrl = URL.createObjectURL(file);
+          videoUrlInput.value = blobUrl;
+          videoPlayer.src = blobUrl;
+          videoPreviewBox.style.display = 'block';
+          videoStatus.textContent = `✓ Local file preview loaded: ${file.name}`;
+          videoPlayer.play().catch(() => {});
+        }
+      });
+    }
+
+    if (formUploadVideo) {
+      formUploadVideo.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const courseId = document.getElementById('video-course-id').value;
+        const moduleId = document.getElementById('video-module-id').value;
+        const lessonId = document.getElementById('video-lesson-id').value;
+        const videoUrl = document.getElementById('video-url-input').value;
+        const summary = document.getElementById('video-lesson-summary-input').value;
+
+        try {
+          const res = await this.service.updateLessonVideo(courseId, moduleId, lessonId, videoUrl, summary);
+          if (res.success) {
+            this.showToast('Video lecture verified and published to module!', 'success');
+            if (videoPlayer) videoPlayer.pause();
+            if (uploadModal) uploadModal.close();
+            await this.refreshAllData();
+
+            if (this.activeCourse && this.activeCourse.id === courseId) {
+              const updated = await this.service.fetchCourseById(courseId);
+              this.activeCourse = updated.data;
+              this.renderClassroomModules(this.activeCourse, { completedLessons: [] });
+            }
+          }
+        } catch (err) {
+          this.showToast(err.message, 'error');
+        }
+      });
+    }
+
     // Faculty Sync button
     const btnSyncFac = document.getElementById('btn-sync-faculty-data');
     if (btnSyncFac) {
@@ -871,13 +984,13 @@ class StudentPortalApp {
       const facultyUser = {
         id: "usr-faculty-1",
         name: "Dr. Sarah Mitchell",
-        email: "sarah.mitchell@learningportal.edu",
+        email: "faculty@edusphere.edu",
         role: "faculty",
         avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
         departmentOrMajor: "Computer Science & Engineering",
-        title: "Senior Professor of Software Engineering",
-        bio: "Leading research in distributed web architectures, enterprise cloud engineering, and interactive pedagogical systems.",
-        learningGoals: "Expand advanced curriculum with modern REST APIs and XML schema modeling.",
+        title: "Professor of Software Engineering",
+        bio: "Lead Faculty Instructor for Advanced Web Engineering and Distributed Cloud Systems.",
+        learningGoals: "Deliver rigorous curriculum with verified lab practicals.",
         officeHours: "Mon/Wed 14:00 - 16:00 UTC"
       };
       this.saveSession(facultyUser);
@@ -890,13 +1003,13 @@ class StudentPortalApp {
       const studentUser = {
         id: "usr-student-1",
         name: "Alex Sterling",
-        email: "alex.sterling@learningportal.edu",
+        email: "student@edusphere.edu",
         role: "student",
         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
         departmentOrMajor: "Computer Science & Engineering",
         title: "Undergraduate Scholar",
-        bio: "Honors undergraduate student exploring high-throughput web systems, distributed architectures, and interactive digital education.",
-        learningGoals: "Complete Full-Stack Architecture certification and deploy scalable cloud microservices.",
+        bio: "Honors student studying advanced web engineering, cloud computing, and distributed database architectures.",
+        learningGoals: "Complete certified technical milestones and software architecture competencies.",
         officeHours: "N/A"
       };
       this.saveSession(studentUser);
@@ -946,9 +1059,13 @@ class StudentPortalApp {
   }
 
   switchView(viewId) {
-    // If faculty attempts to view student dashboard, redirect to faculty studio
-    if (viewId === 'view-dashboard' && this.currentUser.role === 'faculty') {
-      viewId = 'view-faculty';
+    // Role protection
+    if (this.currentUser.role === 'faculty') {
+      if (viewId === 'view-dashboard') viewId = 'view-faculty';
+      if (viewId === 'view-academic') {
+        this.showToast('Official Transcripts & Records are accessible in Student mode.', 'info');
+        viewId = 'view-faculty';
+      }
     }
 
     // Update active nav tab
@@ -1088,25 +1205,29 @@ class StudentPortalApp {
     }
 
     try {
-      const statsRes = await this.service.fetchFacultyStats(this.currentUser.email);
+      // ONLY fetch courses handled by this faculty
+      const [statsRes, facultyCoursesRes] = await Promise.all([
+        this.service.fetchFacultyStats(this.currentUser.email),
+        this.service.fetchFacultyCourses()
+      ]);
+
       const stats = statsRes.data || {};
+      const facultyCourses = facultyCoursesRes.data || [];
 
       const coursesCountEl = document.getElementById('fac-kpi-courses');
       const studentsCountEl = document.getElementById('fac-kpi-students');
       const activeCountEl = document.getElementById('fac-kpi-active');
       const certsCountEl = document.getElementById('fac-kpi-certs');
 
-      if (coursesCountEl) coursesCountEl.textContent = stats.coursesCount || this.courses.length;
-      if (studentsCountEl) studentsCountEl.textContent = Number(stats.totalStudents || 3070).toLocaleString();
-      if (activeCountEl) activeCountEl.textContent = stats.activeEnrollments || this.courses.length;
-      if (certsCountEl) certsCountEl.textContent = stats.certificationsIssued || 24;
-
-      const facultyCourses = stats.courses && stats.courses.length > 0 ? stats.courses : this.courses;
+      if (coursesCountEl) coursesCountEl.textContent = facultyCourses.length;
+      if (studentsCountEl) studentsCountEl.textContent = Number(stats.totalStudents || 340).toLocaleString();
+      if (activeCountEl) activeCountEl.textContent = facultyCourses.length;
+      if (certsCountEl) certsCountEl.textContent = stats.certificationsIssued || 12;
 
       if (facultyCourses.length === 0) {
         const empty = document.createElement('div');
         empty.style.cssText = 'padding: 30px; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md); border: 1px dashed var(--border-color);';
-        empty.textContent = 'No authored courses found. Click "Author New Course" above to create your first curriculum!';
+        empty.textContent = 'You are not handling any courses currently. Click "Author New Course" above to create and manage your first course!';
         container.appendChild(empty);
         return;
       }
@@ -1117,7 +1238,8 @@ class StudentPortalApp {
           course,
           (c) => this.openAddModuleModal(c),
           (c) => this.handleDeleteCourse(c),
-          (c) => this.openClassroomViewDirect(c)
+          (c) => this.openClassroomViewDirect(c),
+          (c) => this.openVideoUploadForCourse(c)
         );
         fragment.appendChild(item);
       });
@@ -1126,6 +1248,42 @@ class StudentPortalApp {
     } catch (err) {
       console.error('Faculty studio render error:', err);
     }
+  }
+
+  openVideoUploadForCourse(course, targetModuleId, targetLessonId) {
+    const modal = document.getElementById('video-upload-modal');
+    if (!modal) return;
+
+    const courseIdInput = document.getElementById('video-course-id');
+    const moduleIdInput = document.getElementById('video-module-id');
+    const lessonIdInput = document.getElementById('video-lesson-id');
+    const displayTarget = document.getElementById('video-target-display');
+    const urlInput = document.getElementById('video-url-input');
+    const summaryInput = document.getElementById('video-lesson-summary-input');
+    const previewBox = document.getElementById('video-preview-box');
+    const player = document.getElementById('video-modal-preview-player');
+
+    // Default to first module and lesson if not explicitly selected
+    const m = (course.modules && course.modules.find(mod => mod.moduleId === targetModuleId)) || (course.modules && course.modules[0]);
+    const l = (m && m.lessons && m.lessons.find(les => les.lessonId === targetLessonId)) || (m && m.lessons && m.lessons[0]);
+
+    if (!m || !l) {
+      this.showToast('Please add at least one module and lesson to this course first.', 'info');
+      this.openAddModuleModal(course);
+      return;
+    }
+
+    courseIdInput.value = course.id;
+    moduleIdInput.value = m.moduleId;
+    lessonIdInput.value = l.lessonId;
+    displayTarget.textContent = `${course.title} > ${m.title} > ${l.title}`;
+    urlInput.value = l.videoUrl || '';
+    summaryInput.value = l.summary || '';
+
+    previewBox.style.display = 'none';
+    player.src = '';
+
+    modal.showModal();
   }
 
   openAddModuleModal(course) {
@@ -1270,10 +1428,28 @@ class StudentPortalApp {
         item.dataset.lessonId = les.lessonId;
 
         const isDone = completed.has(les.lessonId);
+        
+        let facultyUploadBtnHtml = '';
+        if (this.currentUser.role === 'faculty') {
+          facultyUploadBtnHtml = `<button class="btn-secondary btn-upload-lesson-video" style="padding:2px 8px; font-size:11px; margin-left:8px;" title="Upload or Preview Video for this lesson">📹 Video</button>`;
+        }
+
         item.innerHTML = `
           <span>${les.title} (${les.duration})</span>
-          <span class="lesson-check-icon">${isDone ? '✓' : '○'}</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${facultyUploadBtnHtml}
+            <span class="lesson-check-icon">${isDone ? '✓' : '○'}</span>
+          </div>
         `;
+
+        // If faculty clicks the video button on a specific lesson
+        const vidBtn = item.querySelector('.btn-upload-lesson-video');
+        if (vidBtn) {
+          vidBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.openVideoUploadForCourse(course, mod.moduleId, les.lessonId);
+          });
+        }
 
         item.addEventListener('click', () => {
           document.querySelectorAll('.lesson-list-item').forEach(li => li.classList.remove('active'));
@@ -1460,7 +1636,6 @@ class StudentPortalApp {
       roleBadge.className = `user-role-chip ${isFaculty ? 'role-faculty' : 'role-student'}`;
     }
 
-    // Toggle faculty vs student specific form fields
     const titleGroup = document.getElementById('profile-title-group');
     const goalsGroup = document.getElementById('profile-goals-group');
     const officeGroup = document.getElementById('profile-office-hours-group');

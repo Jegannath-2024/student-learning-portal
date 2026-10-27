@@ -26,12 +26,12 @@ async function runTests() {
 
   // 2. POST /api/auth/login (Student Login)
   let studentTokenId = null;
-  await test('POST /api/auth/login (Student Authentication)', async () => {
+  await test('POST /api/auth/login (Student Authentication - student@edusphere.edu)', async () => {
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'alex.sterling@learningportal.edu',
+        email: 'student@edusphere.edu',
         password: 'password123',
         role: 'student'
       })
@@ -45,12 +45,12 @@ async function runTests() {
 
   // 3. POST /api/auth/login (Faculty Login)
   let facultyTokenId = null;
-  await test('POST /api/auth/login (Faculty Authentication)', async () => {
+  await test('POST /api/auth/login (Faculty Authentication - faculty@edusphere.edu)', async () => {
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'sarah.mitchell@learningportal.edu',
+        email: 'faculty@edusphere.edu',
         password: 'password123',
         role: 'faculty'
       })
@@ -63,29 +63,42 @@ async function runTests() {
   });
 
   // 4. GET /api/faculty/stats
-  await test('GET /api/faculty/stats (Faculty Analytics & Cohort Metrics)', async () => {
-    const res = await fetch(`${BASE}/api/faculty/stats?email=sarah.mitchell@learningportal.edu`);
+  await test('GET /api/faculty/stats (Faculty Analytics & Handled Courses Metrics)', async () => {
+    const res = await fetch(`${BASE}/api/faculty/stats?email=faculty@edusphere.edu`, {
+      headers: { 'x-user-id': facultyTokenId || 'usr-faculty-1' }
+    });
     const data = await res.json();
     if (!data.success || typeof data.data.coursesCount !== 'number') {
       throw new Error('Faculty stats retrieval failed');
     }
   });
 
-  // 5. GET /api/courses
+  // 5. GET /api/faculty/courses (Faculty Handled Courses Only)
+  await test('GET /api/faculty/courses (Handled Courses Isolation)', async () => {
+    const res = await fetch(`${BASE}/api/faculty/courses`, {
+      headers: { 'x-user-id': facultyTokenId || 'usr-faculty-1' }
+    });
+    const data = await res.json();
+    if (!data.success || !Array.isArray(data.data)) {
+      throw new Error('Faculty courses fetch failed');
+    }
+  });
+
+  // 6. GET /api/courses
   await test('GET /api/courses (HTTP GET Course Catalog)', async () => {
     const res = await fetch(`${BASE}/api/courses`);
     const data = await res.json();
     if (!data.success || data.count < 1) throw new Error('Courses fetch failed');
   });
 
-  // 6. GET /api/courses/:id
+  // 7. GET /api/courses/:id
   await test('GET /api/courses/cs-101 (HTTP GET Single Course Details)', async () => {
     const res = await fetch(`${BASE}/api/courses/cs-101`);
     const data = await res.json();
     if (!data.success || data.data.id !== 'cs-101') throw new Error('Course detail failed');
   });
 
-  // 7. POST /api/courses (Faculty Course Creation)
+  // 8. POST /api/courses (Faculty Course Creation)
   let createdCourseId = null;
   await test('POST /api/courses (Faculty Authoring Course)', async () => {
     const res = await fetch(`${BASE}/api/courses`, {
@@ -109,7 +122,9 @@ async function runTests() {
     createdCourseId = data.data.id;
   });
 
-  // 8. POST /api/courses/:id/modules (Faculty Adding Module)
+  // 9. POST /api/courses/:id/modules (Faculty Adding Module)
+  let createdModuleId = null;
+  let createdLessonId = null;
   await test('POST /api/courses/:id/modules (Faculty Adding Module & Lesson)', async () => {
     if (!createdCourseId) throw new Error('No created course ID');
     const res = await fetch(`${BASE}/api/courses/${createdCourseId}/modules`, {
@@ -128,22 +143,31 @@ async function runTests() {
     });
     const data = await res.json();
     if (!data.success || !data.data.moduleId) throw new Error('Module addition failed');
+    createdModuleId = data.data.moduleId;
+    createdLessonId = data.data.lessons && data.data.lessons[0] ? data.data.lessons[0].lessonId : null;
   });
 
-  // 9. DELETE /api/courses/:id (Faculty Deleting Course)
-  await test('DELETE /api/courses/:id (Faculty Retiring Course)', async () => {
-    if (!createdCourseId) throw new Error('No created course ID');
-    const res = await fetch(`${BASE}/api/courses/${createdCourseId}`, {
-      method: 'DELETE',
+  // 10. PATCH /api/courses/:id/modules/:moduleId/lessons/:lessonId/video (Upload / Update Video with Live Preview)
+  await test('PATCH /api/courses/:id/modules/:moduleId/lessons/:lessonId/video (Video Upload & Link)', async () => {
+    if (!createdCourseId || !createdModuleId || !createdLessonId) {
+      throw new Error('Course/Module/Lesson IDs missing for video update test');
+    }
+    const res = await fetch(`${BASE}/api/courses/${createdCourseId}/modules/${createdModuleId}/lessons/${createdLessonId}/video`, {
+      method: 'PATCH',
       headers: {
+        'Content-Type': 'application/json',
         'x-user-id': facultyTokenId || 'usr-faculty-1'
-      }
+      },
+      body: JSON.stringify({
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        summary: 'Verified lecture video on container lifecycle with live interactive preview.'
+      })
     });
     const data = await res.json();
-    if (!data.success) throw new Error('Course deletion failed');
+    if (!data.success) throw new Error('Lesson video PATCH update failed');
   });
 
-  // 10. GET /api/student/profile
+  // 11. GET /api/student/profile
   await test('GET /api/student/profile (HTTP GET Student Profile)', async () => {
     const res = await fetch(`${BASE}/api/student/profile`, {
       headers: { 'x-user-id': studentTokenId || 'usr-student-1' }
@@ -152,7 +176,7 @@ async function runTests() {
     if (!data.success || !data.data.name) throw new Error('Student profile fetch failed');
   });
 
-  // 11. PUT /api/student/profile
+  // 12. PUT /api/student/profile
   await test('PUT /api/student/profile (HTTP PUT Update Profile)', async () => {
     const res = await fetch(`${BASE}/api/student/profile`, {
       method: 'PUT',
@@ -171,23 +195,24 @@ async function runTests() {
     if (!data.success) throw new Error('Student profile update failed');
   });
 
-  // 12. POST /api/enrollments
+  // 13. POST /api/enrollments
   let newEnrollmentId = null;
   await test('POST /api/enrollments (HTTP POST Course Enrollment)', async () => {
+    if (!createdCourseId) throw new Error('No target course for enrollment');
     const res = await fetch(`${BASE}/api/enrollments`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'x-user-id': studentTokenId || 'usr-student-1'
       },
-      body: JSON.stringify({ courseId: 'se-303' })
+      body: JSON.stringify({ courseId: createdCourseId })
     });
     const data = await res.json();
     if (!data.success || !data.data.id) throw new Error('Enrollment failed');
     newEnrollmentId = data.data.id;
   });
 
-  // 13. PATCH /api/courses/:id/progress
+  // 14. PATCH /api/courses/cs-101/progress
   await test('PATCH /api/courses/cs-101/progress (HTTP PATCH Lesson Progress)', async () => {
     const res = await fetch(`${BASE}/api/courses/cs-101/progress`, {
       method: 'PATCH',
@@ -201,7 +226,7 @@ async function runTests() {
     if (!data.success) throw new Error('Lesson progress PATCH failed');
   });
 
-  // 14. DELETE /api/enrollments/:id
+  // 15. DELETE /api/enrollments/:id
   await test('DELETE /api/enrollments/:id (HTTP DELETE Drop Course)', async () => {
     if (!newEnrollmentId) throw new Error('No enrollment ID to delete');
     const res = await fetch(`${BASE}/api/enrollments/${newEnrollmentId}`, {
@@ -210,6 +235,19 @@ async function runTests() {
     });
     const data = await res.json();
     if (!data.success) throw new Error('Enrollment DELETE failed');
+  });
+
+  // 16. DELETE /api/courses/:id (Faculty Deleting Course)
+  await test('DELETE /api/courses/:id (Faculty Retiring Course)', async () => {
+    if (!createdCourseId) throw new Error('No created course ID');
+    const res = await fetch(`${BASE}/api/courses/${createdCourseId}`, {
+      method: 'DELETE',
+      headers: {
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error('Course deletion failed');
   });
 
   // 15. GET /api/curriculum/xml

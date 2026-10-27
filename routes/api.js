@@ -656,25 +656,73 @@ router.post('/curriculum/validate-xml', (req, res) => {
   }
 });
 
-// 18. GET /api/academic/verify/:studentId
-router.get('/academic/verify/:studentId', (req, res) => {
-  const { studentId } = req.params;
-  const sampleRecords = {
-    studentId: studentId || 'STU-2026-8941',
-    studentName: 'Alex Sterling',
-    institution: 'University School of Advanced Computing',
-    cumulativeGpa: 3.92,
-    creditsCompleted: 42,
-    academicStanding: 'Dean\'s Honors List',
-    verificationCode: 'VERIFY-AWT-' + Math.floor(100000 + Math.random() * 900000),
-    issuedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    accreditationService: 'Academic Record JDBC Gateway'
-  };
+// 18. GET /api/academic/verify/:studentId (Dynamic Academic Audit)
+router.get('/academic/verify/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const isDemo = (studentId === 'usr-student-1' || studentId === 'STU-2026-8941');
 
-  return res.status(200).json({
-    success: true,
-    data: sampleRecords
-  });
+    if (isDemo) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          studentId: 'STU-2026-8941',
+          studentName: 'Alex Sterling',
+          institution: 'University School of Advanced Computing',
+          cumulativeGpa: '3.92',
+          creditsCompleted: 14,
+          academicStanding: "Dean's Honors List",
+          verificationCode: 'VERIFY-AWT-246019',
+          issuedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          accreditationService: 'Academic Record JDBC Gateway'
+        }
+      });
+    }
+
+    // Dynamic verification for new or registered student
+    const user = await store.getUserById(studentId);
+    const enrollments = await store.getEnrollments(studentId);
+    const courses = await store.getCourses();
+
+    let totalCredits = 0;
+    let earnedPoints = 0;
+    let completedCourses = 0;
+
+    (enrollments || []).forEach(e => {
+      const course = courses.find(c => c.id === e.courseId);
+      const credits = (course && course.credits) ? course.credits : 4;
+      if (e.status === 'Completed' || e.progressPercentage === 100) {
+        totalCredits += credits;
+        earnedPoints += (credits * 4.0);
+        completedCourses++;
+      }
+    });
+
+    const gpa = totalCredits > 0 ? (earnedPoints / totalCredits).toFixed(2) : '0.00';
+    let standing = 'Matriculated (Initial Standing)';
+    if (completedCourses > 0) {
+      standing = Number(gpa) >= 3.5 ? "Dean's Honors List" : 'Good Academic Standing';
+    }
+
+    const safeHash = Math.abs((studentId || 'new').split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(36).toUpperCase();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        studentId: studentId,
+        studentName: user ? user.name : 'Enrolled Student',
+        institution: 'University School of Advanced Computing',
+        cumulativeGpa: gpa,
+        creditsCompleted: totalCredits,
+        academicStanding: standing,
+        verificationCode: 'VERIFY-EDUS-' + safeHash,
+        issuedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        accreditationService: 'Academic Record JDBC Gateway'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 module.exports = router;

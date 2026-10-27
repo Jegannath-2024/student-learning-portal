@@ -490,21 +490,35 @@ async function getModuleQuiz(courseId, moduleId) {
 // Enrollment Operations
 // ==========================================
 async function getEnrollments(studentId = "usr-student-1") {
+  const targetId = (studentId === "student-1") ? "usr-student-1" : studentId;
+
   if (isMongoConnected) {
     try {
-      const enrs = await Enrollment.find({ 
-        $or: [{ studentId }, { studentId: "student-1" }, { studentId: "usr-student-1" }] 
-      });
-      if (enrs && enrs.length > 0) return enrs;
+      const enrs = await Enrollment.find({ studentId: targetId });
+      return enrs || [];
     } catch (err) {
       console.warn("MongoDB getEnrollments failed:", err.message);
     }
   }
-  return memEnrollments.filter(e => e.studentId === studentId || e.studentId === "usr-student-1" || e.studentId === "student-1");
+  return memEnrollments.filter(e => e.studentId === targetId);
 }
 
 async function enrollCourse(courseId, studentId = "usr-student-1") {
-  const existing = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1" || e.studentId === "usr-student-1"));
+  const targetId = (studentId === "student-1") ? "usr-student-1" : studentId;
+
+  if (isMongoConnected) {
+    try {
+      const existingDoc = await Enrollment.findOne({ courseId, studentId: targetId });
+      if (existingDoc) {
+        existingDoc.status = "Active";
+        existingDoc.lastAccessed = new Date();
+        await existingDoc.save();
+        return existingDoc;
+      }
+    } catch (e) {}
+  }
+
+  const existing = memEnrollments.find(e => e.courseId === courseId && e.studentId === targetId);
   if (existing) {
     existing.status = "Active";
     existing.lastAccessed = new Date().toISOString();
@@ -512,8 +526,8 @@ async function enrollCourse(courseId, studentId = "usr-student-1") {
   }
 
   const newEnr = {
-    id: "enr-" + Date.now(),
-    studentId,
+    id: "enr-" + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+    studentId: targetId,
     courseId,
     enrolledAt: new Date().toISOString(),
     progressPercentage: 0,
@@ -538,20 +552,18 @@ async function enrollCourse(courseId, studentId = "usr-student-1") {
 }
 
 async function updateLessonProgress(courseId, lessonId, studentId = "usr-student-1") {
+  const targetId = (studentId === "student-1") ? "usr-student-1" : studentId;
   let enr = null;
   if (isMongoConnected) {
     try {
-      enr = await Enrollment.findOne({ 
-        courseId, 
-        $or: [{ studentId }, { studentId: "student-1" }, { studentId: "usr-student-1" }] 
-      });
+      enr = await Enrollment.findOne({ courseId, studentId: targetId });
     } catch (e) {}
   }
   if (!enr) {
-    enr = memEnrollments.find(e => e.courseId === courseId && (e.studentId === studentId || e.studentId === "student-1" || e.studentId === "usr-student-1"));
+    enr = memEnrollments.find(e => e.courseId === courseId && e.studentId === targetId);
   }
   if (!enr) {
-    enr = await enrollCourse(courseId, studentId);
+    enr = await enrollCourse(courseId, targetId);
   }
 
   if (!enr.completedLessons.includes(lessonId)) {
@@ -768,6 +780,12 @@ async function seedMongoIfEmpty() {
           } 
         }
       );
+    }
+
+    // 4. Ensure demo student has initial enrollment in cs-101
+    const demoEnr = await Enrollment.findOne({ studentId: 'usr-student-1', courseId: 'cs-101' });
+    if (!demoEnr) {
+      await Enrollment.create(initialEnrollments[0]);
     }
 
     console.log("Database synchronization: Canonical student, faculty, and authored courses active.");

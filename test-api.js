@@ -353,6 +353,49 @@ async function runTests() {
     }
   });
 
+  // 21. Fresh Student Registration & Zero-State Verification
+  await test('POST /api/auth/register & Verification of Clean Zero-State for Fresh Student', async () => {
+    const freshEmail = `teststudent_${Date.now()}@edusphere.edu`;
+    const regRes = await fetch(`${BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Fresh Learner',
+        email: freshEmail,
+        password: 'password123',
+        role: 'student'
+      })
+    });
+    const regData = await regRes.json();
+    if (!regData.success || !regData.user || !regData.user.id) {
+      throw new Error('Failed to register fresh student: ' + (regData.error || 'Unknown error'));
+    }
+    const freshStudentId = regData.user.id;
+
+    // Check Enrollments: Must be strictly empty (0 courses)
+    const enrRes = await fetch(`${BASE}/api/enrollments`, {
+      headers: { 'x-user-id': freshStudentId }
+    });
+    const enrData = await enrRes.json();
+    if (!enrData.success || !Array.isArray(enrData.data) || enrData.data.length !== 0) {
+      throw new Error(`Expected 0 enrollments for new student, but got ${enrData.data ? enrData.data.length : 'invalid data'}`);
+    }
+
+    // Check Academic Standing: Must be 0 credits and 0.00 GPA
+    const verifyRes = await fetch(`${BASE}/api/academic/verify/${freshStudentId}`);
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success || verifyData.data.creditsCompleted !== 0 || verifyData.data.cumulativeGpa !== '0.00') {
+      throw new Error(`Expected 0 credits and 0.00 GPA, but got credits=${verifyData.data?.creditsCompleted}, gpa=${verifyData.data?.cumulativeGpa}`);
+    }
+
+    // Check JSP Transcript for new student
+    const transcriptRes = await fetch(`${BASE}/academic-service/web/transcript.jsp?studentId=${freshStudentId}&studentName=Fresh+Learner`);
+    const transcriptHtml = await transcriptRes.text();
+    if (!transcriptHtml.includes('0.00') || !transcriptHtml.includes('Matriculated (Initial Standing)')) {
+      throw new Error('JSP transcript failed to reflect initial 0.00 GPA / Matriculated standing for fresh student');
+    }
+  });
+
   console.log(`\n========================================`);
   console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
   console.log(`========================================`);

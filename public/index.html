@@ -154,28 +154,28 @@
           <div class="kpi-card">
             <div class="kpi-details">
               <h4>Active Enrollments</h4>
-              <div class="kpi-number" id="kpi-enrolled-count">2</div>
+              <div class="kpi-number" id="kpi-enrolled-count">0</div>
             </div>
             <div class="kpi-icon">📖</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-details">
               <h4>Average Completion</h4>
-              <div class="kpi-number" id="kpi-avg-progress">58%</div>
+              <div class="kpi-number" id="kpi-avg-progress">0%</div>
             </div>
             <div class="kpi-icon">📈</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-details">
               <h4>Accredited Credits</h4>
-              <div class="kpi-number" id="kpi-total-credits">14</div>
+              <div class="kpi-number" id="kpi-total-credits">0</div>
             </div>
             <div class="kpi-icon">⭐</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-details">
               <h4>Honors Standing</h4>
-              <div class="kpi-number" style="font-size:20px; color:var(--accent);">Top 5%</div>
+              <div class="kpi-number" id="kpi-honors-standing" style="font-size:20px; color:var(--accent);">Initial</div>
             </div>
             <div class="kpi-icon">🏆</div>
           </div>
@@ -195,28 +195,8 @@
         <!-- Recent Milestones Widget -->
         <div class="recent-activity-card">
           <h3>Academic Milestones</h3>
-          <ul class="activity-list">
-            <li class="activity-item">
-              <span class="activity-dot"></span>
-              <div>
-                <strong>Completed Lesson 2.2</strong>
-                <p style="color:var(--text-muted); font-size:12px;">Full-Stack Web Architectures</p>
-              </div>
-            </li>
-            <li class="activity-item">
-              <span class="activity-dot" style="background:var(--accent);"></span>
-              <div>
-                <strong>Passed Diagnostic Assessment</strong>
-                <p style="color:var(--text-muted); font-size:12px;">Database Systems: Relational Modeling</p>
-              </div>
-            </li>
-            <li class="activity-item">
-              <span class="activity-dot" style="background:var(--accent-amber);"></span>
-              <div>
-                <strong>Curriculum XML Synchronized</strong>
-                <p style="color:var(--text-muted); font-size:12px;">Validated against official Schema Definition</p>
-              </div>
-            </li>
+          <ul class="activity-list" id="dashboard-milestones-list">
+            <!-- Dynamically populated per student account -->
           </ul>
         </div>
 
@@ -419,19 +399,19 @@
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
           <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
             <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cumulative GPA</div>
-            <div id="academic-gpa-display" style="font-size:24px; font-weight:800; color:var(--primary); margin-top:4px;">3.92 / 4.00</div>
+            <div id="academic-gpa-display" style="font-size:24px; font-weight:800; color:var(--primary); margin-top:4px;">0.00 / 4.00</div>
           </div>
           <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
             <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Credits Completed</div>
-            <div style="font-size:24px; font-weight:800; color:var(--text-main); margin-top:4px;">42 Units</div>
+            <div id="academic-credits-completed" style="font-size:24px; font-weight:800; color:var(--text-main); margin-top:4px;">0 Units</div>
           </div>
           <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
             <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Academic Honors</div>
-            <div id="academic-standing-badge" style="font-size:18px; font-weight:700; color:var(--accent); margin-top:4px;">Dean's Honors List</div>
+            <div id="academic-standing-badge" style="font-size:18px; font-weight:700; color:var(--accent); margin-top:4px;">Matriculated (Initial)</div>
           </div>
           <div style="background:var(--bg-secondary); padding:16px; border-radius:8px;">
             <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Verification Code</div>
-            <div id="academic-cert-code" style="font-size:16px; font-weight:700; color:var(--text-main); font-family:monospace; margin-top:6px;">VERIFY-AWT-982145</div>
+            <div id="academic-cert-code" style="font-size:16px; font-weight:700; color:var(--text-main); font-family:monospace; margin-top:6px;">VERIFY-INITIAL</div>
           </div>
         </div>
 

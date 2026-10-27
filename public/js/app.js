@@ -202,10 +202,18 @@ class LearningAnalyticsEngine {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
     this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+    this.cachedData = null;
   }
 
-  drawStudyAnalytics(studyData = [3.5, 4.2, 5.0, 2.8, 6.4, 4.8, 5.5]) {
+  drawStudyAnalytics(studyData) {
     if (!this.canvas || !this.ctx) return;
+
+    if (studyData !== undefined) {
+      this.cachedData = studyData;
+    } else if (!this.cachedData) {
+      this.cachedData = [0, 0, 0, 0, 0, 0, 0];
+    }
+    const data = this.cachedData;
 
     const ctx = this.ctx;
     const width = this.canvas.width = this.canvas.parentElement.clientWidth || 600;
@@ -240,8 +248,8 @@ class LearningAnalyticsEngine {
 
     for (let i = 0; i < days.length; i++) {
       const x = padding + i * step;
-      const y = padding + chartH - (studyData[i] / maxVal) * chartH;
-      points.push({ x, y, val: studyData[i] });
+      const y = padding + chartH - (data[i] / maxVal) * chartH;
+      points.push({ x, y, val: data[i] });
 
       ctx.fillStyle = '#64748b';
       ctx.font = '12px sans-serif';
@@ -810,6 +818,7 @@ class StudentPortalApp {
             this.showToast('Account registered successfully! Logging you in...', 'success');
             this.saveSession(res.user);
             if (authModal) authModal.close();
+            await this.refreshAllData();
             this.switchView(role === 'faculty' ? 'view-faculty' : 'view-dashboard');
           } else {
             this.showToast(res.error || 'Registration failed', 'error');
@@ -1250,6 +1259,8 @@ class StudentPortalApp {
       }
     } else if (viewId === 'view-academic') {
       this.loadAcademicRecords();
+    } else if (viewId === 'view-profile') {
+      this.populateProfileForm();
     }
   }
 
@@ -1329,11 +1340,34 @@ class StudentPortalApp {
       container.removeChild(container.firstChild);
     }
 
+    const isDemoUser = this.currentUser && this.currentUser.id === 'usr-student-1';
+
     if (this.enrollments.length === 0) {
       const empty = document.createElement('div');
       empty.style.cssText = 'padding: 24px; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md); border: 1px dashed var(--border-color);';
       empty.textContent = 'You have not enrolled in any courses yet. Browse the catalog to start learning!';
       container.appendChild(empty);
+
+      // Reset all Dashboard KPIs strictly to zero for clean new student
+      const avgEl = document.getElementById('kpi-avg-progress');
+      if (avgEl) avgEl.textContent = '0%';
+
+      const countEl = document.getElementById('kpi-enrolled-count');
+      if (countEl) countEl.textContent = '0';
+
+      const creditsEl = document.getElementById('kpi-total-credits');
+      if (creditsEl) creditsEl.textContent = '0';
+
+      const honorsEl = document.getElementById('kpi-honors-standing');
+      if (honorsEl) honorsEl.textContent = 'Initial';
+
+      // Zero study hours on canvas
+      if (this.analytics) {
+        this.analytics.drawStudyAnalytics([0, 0, 0, 0, 0, 0, 0]);
+      }
+
+      // Empty milestones list
+      this.renderDashboardMilestones([]);
       return;
     }
 
@@ -1349,9 +1383,21 @@ class StudentPortalApp {
 
     container.appendChild(fragment);
 
-    // Update KPI metrics
+    // Calculate real KPI metrics based on user's active enrollments
     let totalProgress = 0;
-    this.enrollments.forEach(e => totalProgress += (e.progressPercentage || 0));
+    let accreditedCredits = 0;
+
+    this.enrollments.forEach(e => {
+      const pct = Number(e.progressPercentage) || 0;
+      totalProgress += pct;
+      const course = e.course || this.courses.find(c => c.id === e.courseId);
+      if (course) {
+        if (pct === 100 || e.status === 'Completed') {
+          accreditedCredits += (course.credits || 4);
+        }
+      }
+    });
+
     const avg = this.enrollments.length > 0 ? Math.round(totalProgress / this.enrollments.length) : 0;
 
     const avgEl = document.getElementById('kpi-avg-progress');
@@ -1359,6 +1405,103 @@ class StudentPortalApp {
 
     const countEl = document.getElementById('kpi-enrolled-count');
     if (countEl) countEl.textContent = this.enrollments.length;
+
+    const creditsEl = document.getElementById('kpi-total-credits');
+    if (creditsEl) {
+      creditsEl.textContent = isDemoUser ? '14' : String(accreditedCredits);
+    }
+
+    const honorsEl = document.getElementById('kpi-honors-standing');
+    if (honorsEl) {
+      if (isDemoUser) {
+        honorsEl.textContent = 'Top 5%';
+      } else if (accreditedCredits > 0) {
+        honorsEl.textContent = avg >= 80 ? 'Dean\'s List' : 'Good Standing';
+      } else {
+        honorsEl.textContent = avg > 0 ? 'Active' : 'Initial';
+      }
+    }
+
+    // Dynamic Study Analytics graph
+    if (this.analytics) {
+      if (isDemoUser) {
+        this.analytics.drawStudyAnalytics([3.5, 4.2, 5.0, 2.8, 6.4, 4.8, 5.5]);
+      } else {
+        const baseHours = Number((avg / 20).toFixed(1));
+        this.analytics.drawStudyAnalytics([baseHours, baseHours, baseHours, baseHours, baseHours, baseHours, baseHours]);
+      }
+    }
+
+    // Dynamic Milestones
+    this.renderDashboardMilestones(this.enrollments);
+  }
+
+  renderDashboardMilestones(enrollments) {
+    const list = document.getElementById('dashboard-milestones-list');
+    if (!list) return;
+
+    while (list.firstChild) {
+      list.removeChild(list.firstChild);
+    }
+
+    const isDemoUser = this.currentUser && this.currentUser.id === 'usr-student-1';
+
+    if (isDemoUser) {
+      list.innerHTML = `
+        <li class="activity-item">
+          <span class="activity-dot"></span>
+          <div>
+            <strong>Completed Lesson 2.2</strong>
+            <p style="color:var(--text-muted); font-size:12px;">Full-Stack Web Architectures</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-dot" style="background:var(--accent);"></span>
+          <div>
+            <strong>Passed Diagnostic Assessment</strong>
+            <p style="color:var(--text-muted); font-size:12px;">Full-Stack Web Architectures • Module 1</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-dot" style="background:var(--accent-amber);"></span>
+          <div>
+            <strong>Curriculum Enrolled &amp; Active</strong>
+            <p style="color:var(--text-muted); font-size:12px;">CS-101 Verified Cohort</p>
+          </div>
+        </li>
+      `;
+      return;
+    }
+
+    if (!enrollments || enrollments.length === 0) {
+      list.innerHTML = `
+        <li class="activity-item" style="color:var(--text-muted); font-size:13px;">
+          <span class="activity-dot" style="background:var(--border-color);"></span>
+          <div>
+            <strong>No academic milestones recorded yet.</strong>
+            <p style="color:var(--text-muted); font-size:12px;">Enroll in an accredited course and complete module lessons to earn competency milestones.</p>
+          </div>
+        </li>
+      `;
+      return;
+    }
+
+    enrollments.forEach(e => {
+      const course = e.course || this.courses.find(c => c.id === e.courseId);
+      const title = course ? course.title : 'Course';
+      const completedCount = (e.completedLessons || []).length;
+      
+      const li = document.createElement('li');
+      li.className = 'activity-item';
+      li.innerHTML = `
+        <span class="activity-dot" style="background:${e.progressPercentage === 100 ? '#059669' : 'var(--primary)'};"></span>
+        <div>
+          <strong>${e.progressPercentage === 100 ? 'Course Mastered & Completed' : `Active Progress: ${completedCount} lessons completed`}</strong>
+          <p style="color:var(--text-muted); font-size:12px;">${title} (${e.progressPercentage}%)</p>
+        </div>
+      `;
+      list.appendChild(li);
+    });
   }
 
   async renderFacultyStudio() {
@@ -2027,6 +2170,18 @@ class StudentPortalApp {
         if (gpaEl) gpaEl.textContent = `${record.cumulativeGpa} / 4.00`;
         const codeEl = document.getElementById('academic-cert-code');
         if (codeEl) codeEl.textContent = record.verificationCode;
+        const creditsEl = document.getElementById('academic-credits-completed');
+        if (creditsEl) creditsEl.textContent = `${record.creditsCompleted} Units`;
+
+        // Dynamically bind official transcript and certificate buttons
+        const transcriptLink = document.getElementById('link-view-transcript');
+        if (transcriptLink) {
+          transcriptLink.href = `/academic-service/web/transcript.jsp?studentId=${encodeURIComponent(record.studentId)}&name=${encodeURIComponent(record.studentName)}&userId=${encodeURIComponent(this.currentUser.id)}`;
+        }
+        const certLink = document.getElementById('link-view-certificate');
+        if (certLink) {
+          certLink.href = `/academic-service/web/certificate.jsp?name=${encodeURIComponent(record.studentName)}&userId=${encodeURIComponent(this.currentUser.id)}`;
+        }
       }
     } catch (err) {
       console.error('Academic records notice:', err);

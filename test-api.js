@@ -396,6 +396,211 @@ async function runTests() {
     }
   });
 
+  // 22. Fresh Faculty Registration & Zero-State Clean Isolation Verification
+  await test('POST /api/auth/register & Verification of Clean Zero-State for Fresh Faculty', async () => {
+    const freshFacultyEmail = `testfaculty_${Date.now()}@edusphere.edu`;
+    const regRes = await fetch(`${BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Dr. New Instructor',
+        email: freshFacultyEmail,
+        password: 'password123',
+        role: 'faculty',
+        departmentOrMajor: 'Computer Science & Engineering'
+      })
+    });
+    const regData = await regRes.json();
+    if (!regData.success || !regData.user || !regData.user.id) {
+      throw new Error('Failed to register fresh faculty: ' + (regData.error || 'Unknown error'));
+    }
+    const freshFacultyId = regData.user.id;
+
+    // Check Handled Courses: Must start at strictly 0 courses
+    const coursesRes = await fetch(`${BASE}/api/faculty/courses`, {
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const coursesData = await coursesRes.json();
+    if (!coursesData.success || !Array.isArray(coursesData.data) || coursesData.data.length !== 0) {
+      throw new Error(`Expected 0 handled courses for new faculty, but got ${coursesData.data?.length}`);
+    }
+
+    // Check Stats: Must strictly be 0 courses, 0 students, 0 certifications
+    const statsRes = await fetch(`${BASE}/api/faculty/stats`, {
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const statsData = await statsRes.json();
+    if (!statsData.success || statsData.data.coursesCount !== 0 || statsData.data.totalStudents !== 0 || statsData.data.certificationsIssued !== 0) {
+      throw new Error(`Expected clean zero-state for new faculty, but got courses=${statsData.data?.coursesCount}, students=${statsData.data?.totalStudents}, certs=${statsData.data?.certificationsIssued}`);
+    }
+
+    // Check Student Cohort Roster: Must be strictly empty
+    const rosterRes = await fetch(`${BASE}/api/faculty/students`, {
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const rosterData = await rosterRes.json();
+    if (!rosterData.success || !Array.isArray(rosterData.data) || rosterData.data.length !== 0) {
+      throw new Error(`Expected 0 roster students for new faculty, but got ${rosterData.data?.length}`);
+    }
+
+    // Author a new course with this faculty
+    const createRes = await fetch(`${BASE}/api/courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': freshFacultyId
+      },
+      body: JSON.stringify({
+        title: 'Distributed Systems & Microservices',
+        description: 'Advanced course on event-driven microservices.',
+        category: 'Computer Science',
+        level: 'Advanced',
+        credits: 4
+      })
+    });
+    const createData = await createRes.json();
+    if (!createData.success || !createData.data.id) {
+      throw new Error('Failed to create course for new faculty');
+    }
+    const newCourseId = createData.data.id;
+
+    // Verify handled courses now has exactly 1 course
+    const updatedCoursesRes = await fetch(`${BASE}/api/faculty/courses`, {
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const updatedCoursesData = await updatedCoursesRes.json();
+    if (!updatedCoursesData.success || updatedCoursesData.data.length !== 1) {
+      throw new Error(`Expected 1 course for new faculty after authoring, got ${updatedCoursesData.data?.length}`);
+    }
+
+    // Delete the course and verify it cleanly returns to 0
+    const delRes = await fetch(`${BASE}/api/courses/${newCourseId}`, {
+      method: 'DELETE',
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const delData = await delRes.json();
+    if (!delData.success) throw new Error('Failed to delete course');
+
+    const finalCoursesRes = await fetch(`${BASE}/api/faculty/courses`, {
+      headers: { 'x-user-id': freshFacultyId }
+    });
+    const finalCoursesData = await finalCoursesRes.json();
+    if (!finalCoursesData.success || finalCoursesData.data.length !== 0) {
+      throw new Error(`Expected 0 courses after deletion, got ${finalCoursesData.data?.length}`);
+    }
+  });
+
+  // 23. Full Lifecycle Database Persistence: Faculty Authoring -> Student Enrollment & Progress -> Faculty Grant Mastery
+  await test('Full Lifecycle DB Persistence: Faculty Authoring -> Student Progress -> Faculty Management', async () => {
+    // 1. Create a specialized course by faculty
+    const courseRes = await fetch(`${BASE}/api/courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      },
+      body: JSON.stringify({
+        title: 'Full-Stack Distributed Systems Engineering',
+        description: 'Microservices, message queues, and distributed consensus.',
+        category: 'Computer Science',
+        level: 'Advanced',
+        credits: 4
+      })
+    });
+    const courseData = await courseRes.json();
+    if (!courseData.success || !courseData.data.id) throw new Error('Lifecycle course authoring failed');
+    const lifecycleCourseId = courseData.data.id;
+
+    // 2. Add an assessment quiz to Module 1 of this course
+    const targetModuleId = courseData.data.modules[0].moduleId;
+    const quizRes = await fetch(`${BASE}/api/courses/${lifecycleCourseId}/modules/${targetModuleId}/quiz`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      },
+      body: JSON.stringify({
+        title: 'Distributed Consensus Assessment',
+        questions: [
+          {
+            questionId: 'q-1',
+            questionText: 'What is the primary objective of the Raft consensus protocol?',
+            options: ['Leader election and log replication', 'Data compression', 'Memory allocation', 'Network routing'],
+            correctIndex: 0,
+            explanation: 'Raft manages state machine replication through leader election and log synchronization.'
+          }
+        ]
+      })
+    });
+    const quizData = await quizRes.json();
+    if (!quizData.success) throw new Error('Lifecycle quiz authoring failed');
+
+    // 3. Register a new student who will enroll in this course
+    const studentEmail = `lifecycle_student_${Date.now()}@edusphere.edu`;
+    const regStudentRes = await fetch(`${BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Alexandre Dumas',
+        email: studentEmail,
+        password: 'password123',
+        role: 'student'
+      })
+    });
+    const regStudentData = await regStudentRes.json();
+    const studentId = regStudentData.user.id;
+
+    // 4. Student enrolls in the course
+    const enrollRes = await fetch(`${BASE}/api/enrollments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': studentId
+      },
+      body: JSON.stringify({ courseId: lifecycleCourseId })
+    });
+    const enrollData = await enrollRes.json();
+    if (!enrollData.success || !enrollData.data.id) throw new Error('Lifecycle enrollment failed');
+    const enrollmentId = enrollData.data.id;
+
+    // 5. Verify the faculty's student cohort now contains Alexandre Dumas
+    const cohortRes = await fetch(`${BASE}/api/faculty/students`, {
+      headers: { 'x-user-id': facultyTokenId || 'usr-faculty-1' }
+    });
+    const cohortData = await cohortRes.json();
+    const enrolledRecord = cohortData.data.find(st => st.studentId === studentId && st.courseId === lifecycleCourseId);
+    if (!enrolledRecord || enrolledRecord.studentName !== 'Alexandre Dumas') {
+      throw new Error('Faculty student cohort roster failed to reflect enrolled student: ' + JSON.stringify(cohortData.data));
+    }
+
+    // 6. Faculty grants 100% mastery to Alexandre Dumas
+    const grantRes = await fetch(`${BASE}/api/faculty/students/${enrollmentId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      },
+      body: JSON.stringify({ progressPercentage: 100, status: 'Completed' })
+    });
+    const grantData = await grantRes.json();
+    if (!grantData.success || grantData.data.progressPercentage !== 100) {
+      throw new Error('Granting 100% mastery failed');
+    }
+
+    // 7. Verify the student's academic verification now reflects 4 accredited credits and 4.00 GPA
+    const verifyRes = await fetch(`${BASE}/api/academic/verify/${studentId}`);
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success || verifyData.data.creditsCompleted !== 4 || verifyData.data.cumulativeGpa !== '4.00') {
+      throw new Error(`Academic records mismatch after completion: credits=${verifyData.data?.creditsCompleted}, gpa=${verifyData.data?.cumulativeGpa}`);
+    }
+
+    // 8. Clean up lifecycle course
+    await fetch(`${BASE}/api/courses/${lifecycleCourseId}`, {
+      method: 'DELETE',
+      headers: { 'x-user-id': facultyTokenId || 'usr-faculty-1' }
+    });
+  });
+
   console.log(`\n========================================`);
   console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
   console.log(`========================================`);

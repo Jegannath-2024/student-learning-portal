@@ -49,7 +49,7 @@ const initialCourses = [
     },
     thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80",
     rating: 4.9,
-    studentsCount: 340,
+    studentsCount: 1,
     credits: 4,
     duration: "10 Weeks",
     tags: ["Web Engineering", "REST APIs", "Modern Cloud"],
@@ -251,14 +251,17 @@ async function getCoursesByFaculty(facultyEmail, facultyName) {
   const fEmail = (facultyEmail || '').trim().toLowerCase();
   const fName = (facultyName || '').trim().toLowerCase();
 
+  const isDemoFaculty = (fEmail === 'faculty@edusphere.edu' || fEmail === 'sarah.mitchell@learningportal.edu' || fName.includes('sarah mitchell'));
+
   return all.filter(c => {
     if (!c.instructor) return false;
     const instEmail = (c.instructor.email || '').trim().toLowerCase();
     const instName = (c.instructor.name || '').trim().toLowerCase();
 
-    const matchesEmail = fEmail && (instEmail === fEmail || (fEmail.includes('faculty') && instEmail.includes('faculty')));
-    const matchesName = fName && (instName === fName || instName.includes('mitchell'));
-    return matchesEmail || matchesName;
+    if (isDemoFaculty) {
+      return instEmail === 'faculty@edusphere.edu' || instEmail === 'sarah.mitchell@learningportal.edu' || instName.includes('mitchell');
+    }
+    return (fEmail && instEmail === fEmail) || (fName && instName === fName);
   });
 }
 
@@ -631,26 +634,22 @@ async function dropEnrollment(enrollmentId) {
 
 async function getFacultyDashboardStats(facultyEmail, facultyName) {
   const facultyCourses = await getCoursesByFaculty(facultyEmail, facultyName);
-  const allEnrollments = isMongoConnected ? await Enrollment.find() : memEnrollments;
-
-  let totalStudents = 0;
-  facultyCourses.forEach(c => {
-    totalStudents += (c.studentsCount || 0);
-  });
+  const allEnrollments = isMongoConnected ? await Enrollment.find().lean() : memEnrollments;
 
   const courseIds = new Set(facultyCourses.map(c => c.id));
-  const relevantEnrollments = allEnrollments.filter(e => courseIds.has(e.courseId));
+  const relevantEnrollments = (allEnrollments || []).filter(e => courseIds.has(e.courseId));
 
-  let completedCount = 0;
-  relevantEnrollments.forEach(e => {
-    if (e.progressPercentage === 100 || e.status === "Completed") completedCount++;
-  });
+  const uniqueStudentIds = new Set(relevantEnrollments.map(e => e.studentId));
+  const totalStudents = uniqueStudentIds.size;
+  const activeCohorts = facultyCourses.length;
+  const completedCount = relevantEnrollments.filter(e => e.progressPercentage === 100 || e.status === "Completed").length;
 
   return {
     coursesCount: facultyCourses.length,
-    totalStudents: totalStudents + relevantEnrollments.length,
+    totalStudents: totalStudents,
     activeEnrollments: relevantEnrollments.length,
-    certificationsIssued: completedCount + 12,
+    activeCohorts: activeCohorts,
+    certificationsIssued: completedCount,
     courses: facultyCourses
   };
 }
@@ -685,12 +684,12 @@ async function getStudentsByFaculty(facultyEmail, facultyName) {
 
   const result = enrollments.map(enr => {
     const course = facultyCourses.find(c => c.id === enr.courseId);
-    let student = users.find(u => u.id === enr.studentId || u.email === 'student@edusphere.edu');
+    let student = users.find(u => u.id === enr.studentId);
     if (!student) {
       student = {
         id: enr.studentId,
-        name: 'Alex Sterling',
-        email: 'student@edusphere.edu',
+        name: enr.studentId === 'usr-student-1' ? 'Alex Sterling' : 'Student Learner',
+        email: enr.studentId === 'usr-student-1' ? 'student@edusphere.edu' : 'student@university.edu',
         major: 'Computer Science & Engineering'
       };
     }
@@ -776,7 +775,8 @@ async function seedMongoIfEmpty() {
           $set: { 
             'instructor.email': 'faculty@edusphere.edu',
             'instructor.name': 'Dr. Sarah Mitchell',
-            'instructor.title': 'Professor of Software Engineering'
+            'instructor.title': 'Professor of Software Engineering',
+            studentsCount: 1
           } 
         }
       );

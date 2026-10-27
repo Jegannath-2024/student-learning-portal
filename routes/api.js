@@ -152,6 +152,15 @@ router.post('/courses', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Title, description and category are required' });
     }
 
+    const userId = req.headers['x-user-id'];
+    let user = null;
+    if (userId) user = await store.getUserById(userId);
+
+    const authorName = (user && user.name) || instructorName || 'Dr. Sarah Mitchell';
+    const authorEmail = (user && user.email) || 'faculty@edusphere.edu';
+    const authorTitle = (user && user.title) || 'Senior Faculty Instructor';
+    const authorAvatar = (user && user.avatar) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80';
+
     const newCourse = {
       id: 'cs-' + Date.now().toString(36),
       title,
@@ -161,12 +170,12 @@ router.post('/courses', async (req, res) => {
       credits: Number(credits) || 3,
       duration: duration || '6 Weeks',
       rating: 5.0,
-      studentsCount: 1,
+      studentsCount: 0,
       instructor: {
-        name: instructorName || 'Dr. Sarah Mitchell',
-        email: 'sarah.mitchell@learningportal.edu',
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-        title: 'Senior Faculty Instructor'
+        name: authorName,
+        email: authorEmail,
+        avatar: authorAvatar,
+        title: authorTitle
       },
       thumbnail: thumbnail || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
       tags: tags || [category, 'Academic Course'],

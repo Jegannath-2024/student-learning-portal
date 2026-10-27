@@ -383,7 +383,7 @@ class DomRenderer {
     metrics.className = 'course-metrics';
     metrics.innerHTML = `
       <span class="metric-item">★ ${course.rating || 4.9}</span>
-      <span class="metric-item">👥 ${course.studentsCount || 100}</span>
+      <span class="metric-item">👥 ${course.studentsCount !== undefined ? course.studentsCount : 0}</span>
       <span class="metric-item">⏳ ${course.duration || '8 Weeks'}</span>
     `;
 
@@ -1703,9 +1703,9 @@ class StudentPortalApp {
       const certsCountEl = document.getElementById('fac-kpi-certs');
 
       if (coursesCountEl) coursesCountEl.textContent = facultyCourses.length;
-      if (studentsCountEl) studentsCountEl.textContent = Number(stats.totalStudents || 340).toLocaleString();
-      if (activeCountEl) activeCountEl.textContent = facultyCourses.length;
-      if (certsCountEl) certsCountEl.textContent = stats.certificationsIssued || 12;
+      if (studentsCountEl) studentsCountEl.textContent = Number(stats.totalStudents || 0).toLocaleString();
+      if (activeCountEl) activeCountEl.textContent = Number(stats.activeEnrollments !== undefined ? stats.activeEnrollments : facultyCourses.length);
+      if (certsCountEl) certsCountEl.textContent = Number(stats.certificationsIssued || 0);
 
       if (facultyCourses.length === 0) {
         const empty = document.createElement('div');

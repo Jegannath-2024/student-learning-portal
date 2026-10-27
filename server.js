@@ -1,4 +1,12 @@
 require('dotenv').config();
+const dns = require('dns');
+try {
+  // Ensure reliable DNS resolution for MongoDB Atlas SRV records across Windows and cloud runtimes
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  // fallback if environment restricts custom DNS
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

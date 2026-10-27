@@ -311,6 +311,7 @@ async function enrollCourse(courseId) {
     try {
       const doc = new Enrollment(newEnr);
       await doc.save();
+      memEnrollments.push(newEnr);
       return doc;
     } catch (err) {
       console.warn("MongoDB enrollCourse failed:", err.message);
@@ -322,7 +323,15 @@ async function enrollCourse(courseId) {
 }
 
 async function updateLessonProgress(courseId, lessonId) {
-  let enr = memEnrollments.find(e => e.courseId === courseId && e.studentId === "student-1");
+  let enr = null;
+  if (isMongoConnected) {
+    try {
+      enr = await Enrollment.findOne({ courseId, studentId: "student-1" });
+    } catch (e) {}
+  }
+  if (!enr) {
+    enr = memEnrollments.find(e => e.courseId === courseId && e.studentId === "student-1");
+  }
   if (!enr) {
     enr = await enrollCourse(courseId);
   }
@@ -370,19 +379,24 @@ async function updateLessonProgress(courseId, lessonId) {
 }
 
 async function dropEnrollment(enrollmentId) {
+  let dropped = null;
+  if (isMongoConnected) {
+    try {
+      dropped = await Enrollment.findOneAndDelete({ 
+        $or: [{ id: enrollmentId }, { courseId: enrollmentId }] 
+      });
+    } catch (err) {
+      console.warn("MongoDB delete failed:", err.message);
+    }
+  }
+
   const index = memEnrollments.findIndex(e => e.id === enrollmentId || e.courseId === enrollmentId);
   if (index !== -1) {
-    const dropped = memEnrollments.splice(index, 1)[0];
-    if (isMongoConnected) {
-      try {
-        await Enrollment.deleteOne({ id: dropped.id });
-      } catch (err) {
-        console.warn("MongoDB delete failed:", err.message);
-      }
-    }
-    return dropped;
+    const memDropped = memEnrollments.splice(index, 1)[0];
+    if (!dropped) dropped = memDropped;
   }
-  return null;
+
+  return dropped;
 }
 
 async function seedMongoIfEmpty() {

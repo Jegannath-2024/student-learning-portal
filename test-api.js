@@ -1,7 +1,8 @@
 const fs = require('fs');
 
 async function runTests() {
-  const BASE = 'http://localhost:3000';
+  const BASE = process.env.TEST_URL || process.argv[2] || 'http://localhost:3000';
+  console.log(`Running tests against target: ${BASE}`);
   let passed = 0;
   let failed = 0;
 

@@ -150,6 +150,51 @@ class CourseService {
     if (!res.ok) throw new Error('Failed to fetch faculty stats');
     return await res.json();
   }
+
+  async fetchFacultyStudents() {
+    const res = await fetch('/api/faculty/students', {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch faculty students roster');
+    return await res.json();
+  }
+
+  async updateFacultyStudent(enrollmentId, updates) {
+    const res = await fetch(`/api/faculty/students/${enrollmentId}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update student enrollment');
+    return await res.json();
+  }
+
+  async removeFacultyStudent(enrollmentId) {
+    const res = await fetch(`/api/faculty/students/${enrollmentId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to drop student enrollment');
+    return await res.json();
+  }
+
+  async fetchModuleQuiz(courseId, moduleId) {
+    const res = await fetch(`/api/courses/${courseId}/modules/${moduleId}/quiz`, {
+      headers: this.getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch module quiz');
+    return await res.json();
+  }
+
+  async saveModuleQuiz(courseId, moduleId, quizData) {
+    const res = await fetch(`/api/courses/${courseId}/modules/${moduleId}/quiz`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(quizData)
+    });
+    if (!res.ok) throw new Error('Failed to save module quiz');
+    return await res.json();
+  }
 }
 
 // 2. HTML5 Canvas Learning Analytics Engine
@@ -398,20 +443,23 @@ class DomRenderer {
     info.appendChild(img);
     info.appendChild(details);
 
-    // HTML5 Progress Element
+    // HTML5 Progress Element (Safeguarded against non-finite values)
     const progressWrap = document.createElement('div');
     progressWrap.className = 'enrolled-progress-wrap';
+
+    const rawPct = Number(enrollment.progressPercentage);
+    const validProgress = Number.isFinite(rawPct) ? Math.max(0, Math.min(100, Math.round(rawPct))) : 0;
 
     const progressHeader = document.createElement('div');
     progressHeader.className = 'enrolled-progress-header';
     progressHeader.innerHTML = `
       <span>Overall Mastery</span>
-      <strong>${enrollment.progressPercentage}%</strong>
+      <strong>${validProgress}%</strong>
     `;
 
     const progressEl = document.createElement('progress');
     progressEl.max = 100;
-    progressEl.value = enrollment.progressPercentage;
+    progressEl.value = validProgress;
 
     progressWrap.appendChild(progressHeader);
     progressWrap.appendChild(progressEl);
@@ -441,7 +489,7 @@ class DomRenderer {
     return card;
   }
 
-  static createFacultyCourseItem(course, onAddModule, onDelete, onPreview, onUploadVideo) {
+  static createFacultyCourseItem(course, onAddModule, onDelete, onPreview, onUploadVideo, onPrepareQuiz) {
     const item = document.createElement('div');
     item.className = 'faculty-course-item';
 
@@ -483,6 +531,12 @@ class DomRenderer {
     btnVideo.textContent = '📹 Upload / Preview Video';
     btnVideo.addEventListener('click', () => onUploadVideo(course));
 
+    const btnQuiz = document.createElement('button');
+    btnQuiz.className = 'btn-secondary';
+    btnQuiz.style.cssText = 'padding:8px 14px; font-size:12px; border-color:#059669; color:#059669; font-weight:600;';
+    btnQuiz.textContent = '📝 Prepare Quiz';
+    btnQuiz.addEventListener('click', () => onPrepareQuiz(course));
+
     const btnClassroom = document.createElement('button');
     btnClassroom.className = 'btn-secondary';
     btnClassroom.textContent = 'View Classroom';
@@ -499,6 +553,7 @@ class DomRenderer {
     btnDel.addEventListener('click', () => onDelete(course));
 
     btnGroup.appendChild(btnVideo);
+    btnGroup.appendChild(btnQuiz);
     btnGroup.appendChild(btnClassroom);
     btnGroup.appendChild(btnAddMod);
     btnGroup.appendChild(btnDel);
@@ -612,6 +667,34 @@ class StudentPortalApp {
       if (navFaculty) navFaculty.style.display = 'none';
       if (catalogBanner) catalogBanner.style.display = 'none';
       if (classroomFacultyWrap) classroomFacultyWrap.style.display = 'none';
+    }
+
+    // Hide schema validation suite on student page
+    const schemaCard = document.getElementById('schema-validation-card');
+    const curriculumGrid = document.querySelector('.curriculum-grid');
+    if (schemaCard) {
+      if (!isFaculty) {
+        schemaCard.style.display = 'none';
+        if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = '1fr';
+      } else {
+        schemaCard.style.display = 'block';
+        if (curriculumGrid) curriculumGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(340px, 1fr))';
+      }
+    }
+
+    // Dynamically update degree certificate & transcript download links with current student name
+    const certLink = document.getElementById('link-view-certificate');
+    if (certLink) {
+      const studentName = encodeURIComponent(user.name || 'Alex Sterling');
+      const userId = encodeURIComponent(user.id || 'usr-student-1');
+      certLink.href = `/academic-service/web/certificate.jsp?name=${studentName}&userId=${userId}`;
+    }
+
+    const transcriptLink = document.getElementById('link-view-transcript');
+    if (transcriptLink) {
+      const studentName = encodeURIComponent(user.name || 'Alex Sterling');
+      const userId = encodeURIComponent(user.id || 'usr-student-1');
+      transcriptLink.href = `/academic-service/web/transcript.jsp?studentId=STU-2026-8941&name=${studentName}&userId=${userId}`;
     }
 
     this.populateProfileForm();
@@ -973,6 +1056,75 @@ class StudentPortalApp {
       openQuizBtn.addEventListener('click', () => this.openQuizDialog());
     }
 
+    // Quiz Builder modal events
+    const quizModal = document.getElementById('quiz-builder-modal');
+    const closeQuizBtn = document.getElementById('btn-close-quiz-builder');
+    const cancelQuizBtn = document.getElementById('btn-cancel-quiz-builder');
+    const addQBtn = document.getElementById('btn-add-quiz-question');
+    const formQuizBuilder = document.getElementById('form-quiz-builder');
+
+    if (closeQuizBtn && quizModal) closeQuizBtn.addEventListener('click', () => quizModal.close());
+    if (cancelQuizBtn && quizModal) cancelQuizBtn.addEventListener('click', () => quizModal.close());
+    if (addQBtn) {
+      addQBtn.addEventListener('click', () => {
+        const list = document.getElementById('quiz-questions-list');
+        if (list) this.addQuestionBlockToBuilder(list, null);
+      });
+    }
+
+    if (formQuizBuilder) {
+      formQuizBuilder.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const courseId = document.getElementById('quiz-builder-course-id').value;
+        const moduleId = document.getElementById('quiz-builder-module-id').value;
+        const title = document.getElementById('quiz-title-input').value;
+        const blocks = document.querySelectorAll('.quiz-question-block');
+
+        const questions = [];
+        blocks.forEach((block, idx) => {
+          const qText = block.querySelector('.q-text-input').value;
+          const optInputs = block.querySelectorAll('.q-opt-input');
+          const options = Array.from(optInputs).map(inp => inp.value);
+          const checkedRadio = block.querySelector('input[type="radio"]:checked');
+          const correctIndex = checkedRadio ? parseInt(checkedRadio.value, 10) : 0;
+          const explanation = block.querySelector('.q-exp-input').value;
+
+          questions.push({
+            questionId: 'q-' + Date.now().toString(36) + '-' + idx,
+            questionText: qText,
+            options,
+            correctIndex,
+            explanation
+          });
+        });
+
+        if (questions.length === 0) {
+          this.showToast('Please include at least one question in the assessment.', 'error');
+          return;
+        }
+
+        try {
+          const res = await this.service.saveModuleQuiz(courseId, moduleId, { title, questions });
+          if (res.success) {
+            this.showToast('Module assessment quiz published to students successfully!', 'success');
+            if (quizModal) quizModal.close();
+            await this.refreshAllData();
+          }
+        } catch (err) {
+          this.showToast(err.message, 'error');
+        }
+      });
+    }
+
+    // Refresh student roster button
+    const btnRefStudents = document.getElementById('btn-refresh-students');
+    if (btnRefStudents) {
+      btnRefStudents.addEventListener('click', async () => {
+        await this.renderFacultyStudents();
+        this.showToast('Student cohort roster refreshed.', 'success');
+      });
+    }
+
     // Redraw canvas on window resize
     window.addEventListener('resize', () => {
       this.analytics.drawStudyAnalytics();
@@ -1132,16 +1284,31 @@ class StudentPortalApp {
       grid.removeChild(grid.firstChild);
     }
 
-    if (coursesToRender.length === 0) {
+    // When logged in as student, filter out courses they are already enrolled in
+    let coursesToShow = coursesToRender;
+    if (this.currentUser && this.currentUser.role === 'student') {
+      const enrolledIds = new Set((this.enrollments || []).map(e => e.courseId));
+      coursesToShow = coursesToRender.filter(c => !enrolledIds.has(c.id));
+    }
+
+    if (coursesToShow.length === 0) {
       const emptyNotice = document.createElement('div');
-      emptyNotice.style.cssText = 'grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);';
-      emptyNotice.textContent = 'No courses found matching your criteria.';
+      emptyNotice.style.cssText = 'grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px dashed var(--border-color);';
+      if (this.currentUser && this.currentUser.role === 'student' && (this.enrollments || []).length > 0) {
+        emptyNotice.innerHTML = `
+          <h4 style="font-size:16px; font-weight:700; color:var(--text-main); margin-bottom:8px;">🎉 You are actively enrolled in all current coursework!</h4>
+          <p style="font-size:13px; margin-bottom:16px; color:var(--text-muted);">View your active curriculum, watch lesson videos, and complete module assessments in your Learning Dashboard.</p>
+          <button class="btn-primary" onclick="window.portalApp.switchView('view-dashboard')">Go to My Enrolled Courses</button>
+        `;
+      } else {
+        emptyNotice.textContent = 'No courses found matching your criteria.';
+      }
       grid.appendChild(emptyNotice);
       return;
     }
 
     const fragment = document.createDocumentFragment();
-    coursesToRender.forEach(course => {
+    coursesToShow.forEach(course => {
       const card = DomRenderer.createCourseCard(
         course,
         this.currentUser,
@@ -1229,24 +1396,153 @@ class StudentPortalApp {
         empty.style.cssText = 'padding: 30px; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md); border: 1px dashed var(--border-color);';
         empty.textContent = 'You are not handling any courses currently. Click "Author New Course" above to create and manage your first course!';
         container.appendChild(empty);
+      } else {
+        const fragment = document.createDocumentFragment();
+        facultyCourses.forEach(course => {
+          const item = DomRenderer.createFacultyCourseItem(
+            course,
+            (c) => this.openAddModuleModal(c),
+            (c) => this.handleDeleteCourse(c),
+            (c) => this.openClassroomViewDirect(c),
+            (c) => this.openVideoUploadForCourse(c),
+            (c) => this.openQuizBuilderForCourse(c)
+          );
+          fragment.appendChild(item);
+        });
+
+        container.appendChild(fragment);
+      }
+
+      // Render the student cohort management roster
+      await this.renderFacultyStudents();
+    } catch (err) {
+      console.error('Faculty studio render error:', err);
+    }
+  }
+
+  async renderFacultyStudents() {
+    const container = document.getElementById('faculty-students-roster-container');
+    if (!container) return;
+
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    try {
+      const res = await this.service.fetchFacultyStudents();
+      const students = res.data || [];
+
+      if (students.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;';
+        empty.textContent = 'No students are currently enrolled in your courses.';
+        container.appendChild(empty);
         return;
       }
 
-      const fragment = document.createDocumentFragment();
-      facultyCourses.forEach(course => {
-        const item = DomRenderer.createFacultyCourseItem(
-          course,
-          (c) => this.openAddModuleModal(c),
-          (c) => this.handleDeleteCourse(c),
-          (c) => this.openClassroomViewDirect(c),
-          (c) => this.openVideoUploadForCourse(c)
-        );
-        fragment.appendChild(item);
+      const tableWrap = document.createElement('div');
+      tableWrap.style.overflowX = 'auto';
+
+      const table = document.createElement('table');
+      table.style.cssText = 'width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;';
+
+      table.innerHTML = `
+        <thead>
+          <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted);">
+            <th style="padding: 10px 12px;">Student</th>
+            <th style="padding: 10px 12px;">Enrolled Course</th>
+            <th style="padding: 10px 12px;">Mastery Progress</th>
+            <th style="padding: 10px 12px;">Status</th>
+            <th style="padding: 10px 12px; text-align: right;">Faculty Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+
+      const tbody = table.querySelector('tbody');
+      students.forEach(st => {
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+
+        const statusColor = st.status === 'Completed' ? '#059669' : '#3b82f6';
+        const progressPct = Number.isFinite(Number(st.progressPercentage)) ? Math.round(Number(st.progressPercentage)) : 0;
+
+        tr.innerHTML = `
+          <td style="padding: 12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${st.studentAvatar}" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
+              <div>
+                <strong style="color:var(--text-main); display:block;">${st.studentName}</strong>
+                <span style="color:var(--text-muted); font-size:12px;">${st.studentEmail}</span>
+              </div>
+            </div>
+          </td>
+          <td style="padding: 12px; color:var(--text-main); font-weight:600;">
+            ${st.courseTitle}
+          </td>
+          <td style="padding: 12px; min-width: 160px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px;">
+              <span>Completed Lessons: ${st.completedLessonsCount}</span>
+              <strong>${progressPct}%</strong>
+            </div>
+            <progress max="100" value="${progressPct}" style="width:100%; height:8px; border-radius:4px;"></progress>
+          </td>
+          <td style="padding: 12px;">
+            <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:rgba(59,130,246,0.1); color:${statusColor};">
+              ${st.status}
+            </span>
+          </td>
+          <td style="padding: 12px; text-align: right;">
+            <div style="display:flex; gap:6px; justify-content:flex-end;">
+              <button class="btn-primary btn-grant-cert" style="padding:4px 10px; font-size:11px; background:#059669;" title="Award 100% completion & diploma">🎓 Grant 100%</button>
+              <button class="btn-secondary btn-toggle-status" style="padding:4px 10px; font-size:11px;" title="Toggle between Active and In Review">🔄 Status</button>
+              <button class="btn-danger btn-drop-student" style="padding:4px 10px; font-size:11px;" title="Unenroll student from this course">❌ Drop</button>
+            </div>
+          </td>
+        `;
+
+        // Grant 100% mastery
+        tr.querySelector('.btn-grant-cert').addEventListener('click', async () => {
+          try {
+            await this.service.updateFacultyStudent(st.enrollmentId, { progressPercentage: 100, status: 'Completed' });
+            this.showToast(`Granted 100% mastery & certification to ${st.studentName}!`, 'success');
+            await this.renderFacultyStudio();
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          }
+        });
+
+        // Toggle status
+        tr.querySelector('.btn-toggle-status').addEventListener('click', async () => {
+          try {
+            const nextStatus = st.status === 'Completed' ? 'Active' : (st.status === 'Active' ? 'In Review' : 'Active');
+            await this.service.updateFacultyStudent(st.enrollmentId, { status: nextStatus });
+            this.showToast(`Updated ${st.studentName} status to ${nextStatus}`, 'success');
+            await this.renderFacultyStudio();
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          }
+        });
+
+        // Drop student
+        tr.querySelector('.btn-drop-student').addEventListener('click', async () => {
+          if (!confirm(`Are you sure you want to remove ${st.studentName} from ${st.courseTitle}?`)) return;
+          try {
+            await this.service.removeFacultyStudent(st.enrollmentId);
+            this.showToast(`Removed ${st.studentName} from course roster.`, 'success');
+            await this.renderFacultyStudio();
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          }
+        });
+
+        tbody.appendChild(tr);
       });
 
-      container.appendChild(fragment);
+      tableWrap.appendChild(table);
+      container.appendChild(tableWrap);
     } catch (err) {
-      console.error('Faculty studio render error:', err);
+      console.error('Error rendering faculty students:', err);
     }
   }
 
@@ -1342,8 +1638,10 @@ class StudentPortalApp {
         this.showToast(`Successfully enrolled in "${course.title}"!`, 'success');
         const enrollmentsRes = await this.service.fetchEnrollments();
         this.enrollments = enrollmentsRes.data || [];
+        // Immediately refresh views: course disappears from catalog and appears in enrolled list
         this.renderEnrolledCourses();
-        this.openClassroomView(res.data);
+        this.renderCourses(this.courses);
+        this.switchView('view-dashboard');
       }
     } catch (err) {
       this.showToast(err.message, 'error');
@@ -1360,6 +1658,7 @@ class StudentPortalApp {
         this.showToast('Course enrollment successfully removed.', 'success');
         this.enrollments = this.enrollments.filter(e => e.id !== enrollment.id);
         this.renderEnrolledCourses();
+        this.renderCourses(this.courses); // Course reappears in catalog
       }
     } catch (err) {
       this.showToast(err.message, 'error');
@@ -1412,12 +1711,28 @@ class StudentPortalApp {
       const modGroup = document.createElement('div');
       modGroup.className = 'module-group';
 
+      let facultyQuizBtn = '';
+      if (this.currentUser.role === 'faculty') {
+        facultyQuizBtn = `<button class="btn-secondary btn-header-prepare-quiz" style="padding:2px 8px; font-size:11px; margin-left:auto; margin-right:8px; border-color:#059669; color:#059669; font-weight:600;" title="Prepare assessment quiz for this module">📝 Prepare Quiz</button>`;
+      }
+
       const header = document.createElement('div');
       header.className = 'module-header';
       header.innerHTML = `
         <span>${mod.title}</span>
-        <span class="module-toggle-icon">▼</span>
+        <div style="display:flex; align-items:center;">
+          ${facultyQuizBtn}
+          <span class="module-toggle-icon">▼</span>
+        </div>
       `;
+
+      const quizBtn = header.querySelector('.btn-header-prepare-quiz');
+      if (quizBtn) {
+        quizBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openQuizBuilderForCourse(course, mod.moduleId);
+        });
+      }
 
       const lessonsList = document.createElement('ul');
       lessonsList.className = 'lessons-list';
@@ -1474,6 +1789,12 @@ class StudentPortalApp {
 
   selectLesson(lesson, enrollment) {
     this.activeLesson = lesson;
+    if (this.activeCourse && this.activeCourse.modules) {
+      this.activeModule = this.activeCourse.modules.find(m => 
+        (m.lessons || []).some(l => l.lessonId === lesson.lessonId)
+      ) || this.activeCourse.modules[0];
+    }
+
     document.getElementById('lesson-title-display').textContent = lesson.title;
     document.getElementById('lesson-summary-display').textContent = lesson.summary || 'In this lecture session, we explore key structural implementations and architectural patterns.';
 
@@ -1510,43 +1831,155 @@ class StudentPortalApp {
     }
   }
 
-  openQuizDialog() {
+  async openQuizDialog() {
     const modal = document.getElementById('custom-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalBody = document.getElementById('modal-body-content');
 
-    modalTitle.textContent = `Assessment: ${this.activeLesson ? this.activeLesson.title : 'Comprehensive Quiz'}`;
-    modalBody.innerHTML = `
-      <form id="quiz-form">
-        <div style="margin-bottom:16px;">
-          <p style="font-weight:600; font-size:14px; margin-bottom:8px;">1. What is the primary role of asynchronous AJAX communication in modern web apps?</p>
-          <label style="display:block; margin-bottom:4px; font-size:13px;"><input type="radio" name="q1" value="a"> Forcing synchronous full-page reloads</label>
-          <label style="display:block; margin-bottom:4px; font-size:13px;"><input type="radio" name="q1" value="b"> Exchanging JSON payloads in the background without refreshing</label>
-          <label style="display:block; font-size:13px;"><input type="radio" name="q1" value="c"> Disabling client-side JavaScript execution</label>
-        </div>
+    if (!this.activeCourse) return;
+    const moduleId = (this.activeModule && this.activeModule.moduleId) || 
+      (this.activeCourse.modules && this.activeCourse.modules[0] ? this.activeCourse.modules[0].moduleId : 'mod-1');
 
-        <div style="margin-bottom:16px;">
-          <p style="font-weight:600; font-size:14px; margin-bottom:8px;">2. Which HTTP method is semantically used for partial updates to a resource?</p>
-          <label style="display:block; margin-bottom:4px; font-size:13px;"><input type="radio" name="q2" value="a"> GET</label>
-          <label style="display:block; margin-bottom:4px; font-size:13px;"><input type="radio" name="q2" value="b"> POST</label>
-          <label style="display:block; font-size:13px;"><input type="radio" name="q2" value="c"> PATCH</label>
-        </div>
+    modalTitle.textContent = `Module Assessment: ${this.activeLesson ? this.activeLesson.title : 'Practical Assessment'}`;
+    modalBody.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-muted);">Loading verified module assessment...</div>';
+    modal.showModal();
 
-        <div style="margin-bottom:16px;">
-          <p style="font-weight:600; font-size:14px; margin-bottom:8px;">3. What is the fundamental difference between XML DTD and XML Schema (XSD)?</p>
-          <label style="display:block; margin-bottom:4px; font-size:13px;"><input type="radio" name="q3" value="a"> XSD is written in XML syntax and supports rich datatypes and ranges</label>
-          <label style="display:block; font-size:13px;"><input type="radio" name="q3" value="b"> DTD supports object-oriented inheritance whereas XSD does not</label>
-        </div>
+    try {
+      const res = await this.service.fetchModuleQuiz(this.activeCourse.id, moduleId);
+      const quiz = res.data;
+      window.currentActiveQuiz = quiz;
 
-        <div id="quiz-feedback-box" class="validation-output" style="margin-top:12px;"></div>
+      let questionsHtml = '';
+      (quiz.questions || []).forEach((q, qIdx) => {
+        let optionsHtml = '';
+        (q.options || []).forEach((opt, optIdx) => {
+          optionsHtml += `
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:13px; cursor:pointer;">
+              <input type="radio" name="q_${qIdx}" value="${optIdx}">
+              <span>${opt}</span>
+            </label>
+          `;
+        });
 
-        <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-          <button type="button" class="btn-primary" id="btn-submit-quiz">Submit Assessment</button>
-        </div>
-      </form>
+        questionsHtml += `
+          <div style="margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border-color);">
+            <p style="font-weight:700; font-size:14px; margin-bottom:8px; color:var(--text-main);">${qIdx + 1}. ${q.questionText}</p>
+            <div style="margin-left:8px;">${optionsHtml}</div>
+          </div>
+        `;
+      });
+
+      modalBody.innerHTML = `
+        <form id="quiz-form">
+          <div style="margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid var(--border-color);">
+            <h4 style="font-size:16px; font-weight:700; color:var(--primary); margin:0 0 4px 0;">${quiz.title}</h4>
+            <span style="font-size:12px; color:var(--text-muted);">Passing threshold: 60% &bull; Questions prepared by faculty instructor</span>
+          </div>
+          ${questionsHtml}
+          <div id="quiz-feedback-box" class="validation-output" style="margin-top:12px;"></div>
+          <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn-primary" id="btn-submit-quiz">Submit Assessment</button>
+          </div>
+        </form>
+      `;
+    } catch (err) {
+      modalBody.innerHTML = `<div class="validation-output error">Failed to load quiz: ${err.message}</div>`;
+    }
+  }
+
+  async openQuizBuilderForCourse(course, targetModuleId) {
+    const modal = document.getElementById('quiz-builder-modal');
+    if (!modal) return;
+
+    const courseIdInput = document.getElementById('quiz-builder-course-id');
+    const moduleIdInput = document.getElementById('quiz-builder-module-id');
+    const targetDisplay = document.getElementById('quiz-builder-target-display');
+    const titleInput = document.getElementById('quiz-title-input');
+    const questionsList = document.getElementById('quiz-questions-list');
+
+    const mod = (course.modules && course.modules.find(m => m.moduleId === targetModuleId)) || (course.modules && course.modules[0]);
+    if (!mod) {
+      this.showToast('Please add at least one module before preparing a quiz.', 'error');
+      return;
+    }
+
+    courseIdInput.value = course.id;
+    moduleIdInput.value = mod.moduleId;
+    targetDisplay.textContent = `${course.title} • ${mod.title}`;
+
+    questionsList.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted);">Loading existing module questions...</div>';
+    modal.showModal();
+
+    try {
+      const res = await this.service.fetchModuleQuiz(course.id, mod.moduleId);
+      const quiz = res.data || {};
+      titleInput.value = quiz.title || `${mod.title} Assessment Quiz`;
+
+      questionsList.innerHTML = '';
+      const questions = (quiz.questions && quiz.questions.length > 0) ? quiz.questions : [
+        {
+          questionText: 'What is the primary role of asynchronous AJAX communication in modern web apps?',
+          options: [
+            'Forcing synchronous full-page reloads',
+            'Exchanging JSON payloads in background without refreshing',
+            'Disabling client-side JavaScript execution',
+            'Preventing CSS styling from applying'
+          ],
+          correctIndex: 1,
+          explanation: 'AJAX enables background asynchronous communication.'
+        }
+      ];
+
+      questions.forEach((q) => {
+        this.addQuestionBlockToBuilder(questionsList, q);
+      });
+    } catch (e) {
+      questionsList.innerHTML = '';
+      this.addQuestionBlockToBuilder(questionsList, null);
+    }
+  }
+
+  addQuestionBlockToBuilder(container, qData) {
+    const block = document.createElement('div');
+    block.className = 'quiz-question-block';
+    block.style.cssText = 'background:var(--bg-secondary); padding:14px; border-radius:8px; border:1px solid var(--border-color);';
+
+    const qNum = container.children.length + 1;
+    const qText = qData ? qData.questionText : '';
+    const opts = qData ? qData.options : ['', '', '', ''];
+    const correct = qData ? Number(qData.correctIndex || 0) : 0;
+    const exp = qData ? (qData.explanation || '') : '';
+    const radioGroupName = 'correct_opt_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 4);
+
+    block.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <strong style="font-size:13px; color:var(--text-main);">Question #${qNum}</strong>
+        <button type="button" class="btn-danger btn-remove-q-block" style="padding:2px 8px; font-size:11px;">Remove</button>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px; font-weight:600;">Question Title / Prompt:</label>
+        <input type="text" class="q-text-input" value="${qText}" style="width:100%; padding:6px 10px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-main);" placeholder="e.g. Which HTTP method is idempotent?" required>
+      </div>
+      <div style="font-size:12px; font-weight:600; margin-bottom:4px;">Answer Choices (Select radio button for the correct answer):</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+        ${[0, 1, 2, 3].map(i => `
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="radio" name="${radioGroupName}" value="${i}" ${correct === i ? 'checked' : ''} style="cursor:pointer;" title="Mark as correct answer">
+            <input type="text" class="q-opt-input" value="${opts[i] || ''}" style="width:100%; padding:5px 8px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-main);" placeholder="Option ${i + 1}" required>
+          </div>
+        `).join('')}
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:600;">Feedback / Competency Explanation:</label>
+        <input type="text" class="q-exp-input" value="${exp}" style="width:100%; padding:5px 8px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-main);" placeholder="Explanation shown to students after answering">
+      </div>
     `;
 
-    modal.showModal();
+    block.querySelector('.btn-remove-q-block').addEventListener('click', () => {
+      block.remove();
+    });
+
+    container.appendChild(block);
   }
 
   showCourseCurriculumModal(course) {

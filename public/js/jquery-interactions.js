@@ -76,7 +76,8 @@ $(document).ready(function() {
           if (window.portalApp) {
             window.portalApp.currentUser = { ...window.portalApp.currentUser, ...response.data };
             window.portalApp.saveSession(window.portalApp.currentUser);
-            window.portalApp.showToast('Profile updated successfully!', 'success');
+            window.portalApp.updateUserUI();
+            window.portalApp.showToast('Profile updated successfully! Degree certificate and academic records refreshed.', 'success');
           }
         }
       },
@@ -114,28 +115,42 @@ $(document).ready(function() {
     }
   });
 
-  // 7. Interactive Quiz Modal Submit with jQuery
+  // 7. Interactive Quiz Modal Submit with jQuery (Dynamic Assessment Engine)
   $(document).on('click', '#btn-submit-quiz', function() {
+    const quiz = window.currentActiveQuiz;
+    const questions = (quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) ? quiz.questions : [
+      { correctIndex: 1 },
+      { correctIndex: 2 },
+      { correctIndex: 0 }
+    ];
+    const total = questions.length;
     let score = 0;
-    const total = 3;
 
-    if ($('input[name="q1"]:checked').val() === 'b') score++;
-    if ($('input[name="q2"]:checked').val() === 'c') score++;
-    if ($('input[name="q3"]:checked').val() === 'a') score++;
+    questions.forEach((q, idx) => {
+      const selectedVal = $(`input[name="q_${idx}"]:checked`).val();
+      if (selectedVal !== undefined && parseInt(selectedVal, 10) === Number(q.correctIndex || 0)) {
+        score++;
+      }
+    });
 
     const percent = Math.round((score / total) * 100);
     const $quizResult = $('#quiz-feedback-box');
     $quizResult.hide().removeClass('success error');
 
-    if (percent >= 66) {
+    if (percent >= 60) {
       $quizResult.addClass('success').html(`
         <strong>Assessment Passed!</strong> Score: ${score}/${total} (${percent}%).
-        <p style="margin-top:4px; font-size:12px;">Competency recorded to student academic progress.</p>
+        <p style="margin-top:4px; font-size:12px;">Competency recorded to student academic progress. Lesson marked complete!</p>
       `).slideDown(300);
+
+      // Automatically complete the lesson milestone if passed
+      if (window.portalApp && window.portalApp.handleCompleteLesson) {
+        window.portalApp.handleCompleteLesson();
+      }
     } else {
       $quizResult.addClass('error').html(`
         <strong>Score: ${score}/${total} (${percent}%).</strong>
-        <p style="margin-top:4px; font-size:12px;">Review the lecture video and try again to achieve passing threshold.</p>
+        <p style="margin-top:4px; font-size:12px;">Passing threshold is 60%. Review the lecture video and try again.</p>
       `).slideDown(300);
     }
   });

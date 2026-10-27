@@ -8,10 +8,24 @@ const lessonSchema = new mongoose.Schema({
   summary: { type: String }
 });
 
+const questionSchema = new mongoose.Schema({
+  questionId: { type: String, required: true },
+  questionText: { type: String, required: true },
+  options: [{ type: String, required: true }],
+  correctIndex: { type: Number, default: 0 },
+  explanation: { type: String }
+});
+
+const quizSchema = new mongoose.Schema({
+  title: { type: String, default: 'Module Assessment' },
+  questions: [questionSchema]
+});
+
 const moduleSchema = new mongoose.Schema({
   moduleId: { type: String, required: true },
   title: { type: String, required: true },
-  lessons: [lessonSchema]
+  lessons: [lessonSchema],
+  quiz: { type: quizSchema, default: null }
 });
 
 const courseSchema = new mongoose.Schema({

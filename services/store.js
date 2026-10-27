@@ -404,6 +404,88 @@ async function updateLessonVideo(courseId, moduleId, lessonId, videoUrl, summary
   return updatedLesson;
 }
 
+// Module Quiz Management (Faculty Quiz Builder & Student Assessments)
+async function saveModuleQuiz(courseId, moduleId, quizData) {
+  const course = await getCourseById(courseId);
+  if (!course || !course.modules) return null;
+
+  let targetModule = null;
+  for (let m of course.modules) {
+    if (m.moduleId === moduleId) {
+      m.quiz = quizData;
+      targetModule = m;
+      break;
+    }
+  }
+
+  if (targetModule) {
+    if (isMongoConnected) {
+      try {
+        await Course.findOneAndUpdate(
+          { id: courseId },
+          { $set: { modules: course.modules } }
+        );
+      } catch (err) {
+        console.warn("MongoDB saveModuleQuiz failed:", err.message);
+      }
+    }
+    const memIdx = memCourses.findIndex(c => c.id === courseId);
+    if (memIdx !== -1) {
+      memCourses[memIdx] = course;
+    }
+  }
+
+  return targetModule ? targetModule.quiz : null;
+}
+
+async function getModuleQuiz(courseId, moduleId) {
+  const course = await getCourseById(courseId);
+  if (!course || !course.modules) return null;
+
+  const targetModule = course.modules.find(m => m.moduleId === moduleId);
+  if (targetModule && targetModule.quiz && Array.isArray(targetModule.quiz.questions) && targetModule.quiz.questions.length > 0) {
+    return targetModule.quiz;
+  }
+
+  // Default initial curriculum quiz questions for this module
+  return {
+    title: `${targetModule ? targetModule.title : 'Module'} Practical Assessment`,
+    questions: [
+      {
+        questionId: 'q-' + Date.now().toString(36) + '-1',
+        questionText: 'What is the primary role of asynchronous AJAX communication in modern web apps?',
+        options: [
+          'Forcing synchronous full-page reloads',
+          'Exchanging JSON payloads in background without refreshing',
+          'Disabling client-side JavaScript execution',
+          'Preventing CSS styling from applying'
+        ],
+        correctIndex: 1,
+        explanation: 'AJAX enables asynchronous data exchange with servers in the background without disturbing the existing page.'
+      },
+      {
+        questionId: 'q-' + Date.now().toString(36) + '-2',
+        questionText: 'Which HTTP method is semantically used for partial updates to a resource?',
+        options: ['GET', 'POST', 'PATCH', 'PUT'],
+        correctIndex: 2,
+        explanation: 'PATCH is the standard HTTP method designed specifically for applying partial modifications to a resource.'
+      },
+      {
+        questionId: 'q-' + Date.now().toString(36) + '-3',
+        questionText: 'What is the fundamental difference between XML DTD and XML Schema (XSD)?',
+        options: [
+          'XSD is written in XML syntax and supports rich datatypes and ranges',
+          'DTD supports object-oriented inheritance whereas XSD does not',
+          'There is no difference between DTD and Schema',
+          'DTD is only used for CSS stylesheets'
+        ],
+        correctIndex: 0,
+        explanation: 'XML Schema is authored in XML syntax and provides strong type checking (integers, strings, dates), unlike basic DTDs.'
+      }
+    ]
+  };
+}
+
 // ==========================================
 // Enrollment Operations
 // ==========================================
@@ -561,12 +643,105 @@ async function getFacultyDashboardStats(facultyEmail, facultyName) {
   };
 }
 
+// Faculty Student Cohort Management
+async function getStudentsByFaculty(facultyEmail, facultyName) {
+  const facultyCourses = await getCoursesByFaculty(facultyEmail, facultyName);
+  const courseIds = facultyCourses.map(c => c.id);
+
+  let enrollments = [];
+  if (isMongoConnected) {
+    try {
+      enrollments = await Enrollment.find({ courseId: { $in: courseIds } }).lean();
+    } catch (e) {
+      console.warn("MongoDB getStudentsByFaculty error:", e.message);
+    }
+  }
+  if (!enrollments || enrollments.length === 0) {
+    enrollments = memEnrollments.filter(e => courseIds.includes(e.courseId));
+  }
+
+  // Fetch all users to populate student profiles
+  let users = [];
+  if (isMongoConnected) {
+    try {
+      users = await User.find({ role: 'student' }).lean();
+    } catch (e) {}
+  }
+  if (!users || users.length === 0) {
+    users = memUsers.filter(u => u.role === 'student');
+  }
+
+  const result = enrollments.map(enr => {
+    const course = facultyCourses.find(c => c.id === enr.courseId);
+    let student = users.find(u => u.id === enr.studentId || u.email === 'student@edusphere.edu');
+    if (!student) {
+      student = {
+        id: enr.studentId,
+        name: 'Alex Sterling',
+        email: 'student@edusphere.edu',
+        major: 'Computer Science & Engineering'
+      };
+    }
+
+    return {
+      enrollmentId: enr.id,
+      studentId: student.id,
+      studentName: student.name,
+      studentEmail: student.email,
+      studentMajor: student.departmentOrMajor || student.major || 'Computer Science',
+      studentAvatar: student.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+      courseId: enr.courseId,
+      courseTitle: course ? course.title : enr.courseId,
+      progressPercentage: Number.isFinite(Number(enr.progressPercentage)) ? Number(enr.progressPercentage) : 0,
+      completedLessonsCount: (enr.completedLessons || []).length,
+      status: enr.status || 'Active',
+      enrolledAt: enr.enrolledAt,
+      lastAccessed: enr.lastAccessed
+    };
+  });
+
+  return result;
+}
+
+async function updateFacultyStudentStatus(enrollmentId, updates) {
+  let enr = null;
+  if (isMongoConnected) {
+    try {
+      enr = await Enrollment.findOne({ id: enrollmentId });
+      if (enr) {
+        if (updates.status) enr.status = updates.status;
+        if (typeof updates.progressPercentage === 'number') {
+          enr.progressPercentage = Math.max(0, Math.min(100, updates.progressPercentage));
+          if (enr.progressPercentage === 100) enr.status = 'Completed';
+        }
+        enr.lastAccessed = new Date();
+        await enr.save();
+      }
+    } catch (e) {
+      console.warn("MongoDB updateFacultyStudentStatus failed:", e.message);
+    }
+  }
+
+  const memIdx = memEnrollments.findIndex(e => e.id === enrollmentId);
+  if (memIdx !== -1) {
+    if (updates.status) memEnrollments[memIdx].status = updates.status;
+    if (typeof updates.progressPercentage === 'number') {
+      memEnrollments[memIdx].progressPercentage = Math.max(0, Math.min(100, updates.progressPercentage));
+      if (memEnrollments[memIdx].progressPercentage === 100) memEnrollments[memIdx].status = 'Completed';
+    }
+    memEnrollments[memIdx].lastAccessed = new Date().toISOString();
+    return memEnrollments[memIdx];
+  }
+
+  return enr;
+}
+
 // Clean up dummy courses from Atlas and ensure canonical accounts exist
 async function seedMongoIfEmpty() {
   if (!isMongoConnected) return;
   try {
-    // 1. Purge unwanted dummy courses ds-202 and se-303
-    await Course.deleteMany({ id: { $in: ['ds-202', 'se-303'] } });
+    // 1. Purge unwanted dummy courses ds-202, se-303, and test created courses
+    await Course.deleteMany({ $or: [{ id: { $in: ['ds-202', 'se-303'] } }, { id: { $regex: /^cs-mv/ } }] });
     await Enrollment.deleteMany({ courseId: { $in: ['ds-202', 'se-303'] } });
 
     // 2. Ensure only 1 student and 1 faculty exist in User collection
@@ -616,9 +791,13 @@ module.exports = {
   deleteCourse,
   addModuleToCourse,
   updateLessonVideo,
+  saveModuleQuiz,
+  getModuleQuiz,
   getEnrollments,
   enrollCourse,
   updateLessonProgress,
   dropEnrollment,
-  getFacultyDashboardStats
+  getFacultyDashboardStats,
+  getStudentsByFaculty,
+  updateFacultyStudentStatus
 };

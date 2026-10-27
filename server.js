@@ -71,7 +71,7 @@ app.use(async (req, res, next) => {
 app.use('/api', apiRoutes);
 
 // Direct JSP rendering fallback handler in Express (so transcript.jsp and certificate.jsp work out-of-the-box)
-app.get('/academic-service/web/:file', (req, res) => {
+app.get('/academic-service/web/:file', async (req, res) => {
   const file = req.params.file;
   const filePath = path.join(__dirname, 'academic-service', 'web', file);
   const fs = require('fs');
@@ -79,7 +79,23 @@ app.get('/academic-service/web/:file', (req, res) => {
   if (fs.existsSync(filePath)) {
     let content = fs.readFileSync(filePath, 'utf8');
     const studentId = req.query.studentId || 'STU-2026-8941';
-    const studentName = req.query.name || 'Alex Sterling';
+    let studentName = req.query.name;
+
+    // Dynamically fetch student's latest profile name from database if not explicitly set
+    if (!studentName || studentName === 'Alex Sterling') {
+      try {
+        const studentUserId = req.query.userId || 'usr-student-1';
+        const studentUser = await store.getUserById(studentUserId);
+        if (studentUser && studentUser.name) {
+          studentName = studentUser.name;
+        } else {
+          studentName = 'Alex Sterling';
+        }
+      } catch (e) {
+        studentName = 'Alex Sterling';
+      }
+    }
+
     const courseTitle = req.query.course || 'Full-Stack Web Architectures';
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 

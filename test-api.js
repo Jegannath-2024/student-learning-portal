@@ -167,7 +167,42 @@ async function runTests() {
     if (!data.success) throw new Error('Lesson video PATCH update failed');
   });
 
-  // 11. GET /api/student/profile
+  // 11. POST & GET Module Quiz (Faculty Quiz Builder & Student Diagnostic)
+  await test('POST & GET Module Quiz (Faculty Preparing Quiz for Module)', async () => {
+    if (!createdCourseId || !createdModuleId) throw new Error('Missing course/module ID for quiz preparation');
+    
+    // Save quiz
+    const saveRes = await fetch(`${BASE}/api/courses/${createdCourseId}/modules/${createdModuleId}/quiz`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      },
+      body: JSON.stringify({
+        title: 'Microservices & Containerization Mastery Assessment',
+        questions: [
+          {
+            questionId: 'q-test-1',
+            questionText: 'Which Linux kernel primitive provides process namespace isolation?',
+            options: ['cgroups', 'namespaces', 'systemd', 'iptables'],
+            correctIndex: 1,
+            explanation: 'Namespaces isolate system resources such as mount points, PIDs, and networks.'
+          }
+        ]
+      })
+    });
+    const saveData = await saveRes.json();
+    if (!saveData.success) throw new Error('Module quiz save failed: ' + saveData.error);
+
+    // Retrieve quiz
+    const getRes = await fetch(`${BASE}/api/courses/${createdCourseId}/modules/${createdModuleId}/quiz`);
+    const getData = await getRes.json();
+    if (!getData.success || !getData.data.questions || getData.data.questions.length === 0) {
+      throw new Error('Module quiz retrieval failed');
+    }
+  });
+
+  // 12. GET /api/student/profile
   await test('GET /api/student/profile (HTTP GET Student Profile)', async () => {
     const res = await fetch(`${BASE}/api/student/profile`, {
       headers: { 'x-user-id': studentTokenId || 'usr-student-1' }
@@ -176,8 +211,9 @@ async function runTests() {
     if (!data.success || !data.data.name) throw new Error('Student profile fetch failed');
   });
 
-  // 12. PUT /api/student/profile
-  await test('PUT /api/student/profile (HTTP PUT Update Profile)', async () => {
+  // 13. PUT /api/student/profile
+  const updatedStudentName = 'Alex Sterling';
+  await test('PUT /api/student/profile (HTTP PUT Update Profile Name & Bio)', async () => {
     const res = await fetch(`${BASE}/api/student/profile`, {
       method: 'PUT',
       headers: { 
@@ -185,7 +221,7 @@ async function runTests() {
         'x-user-id': studentTokenId || 'usr-student-1'
       },
       body: JSON.stringify({
-        name: 'Alex Sterling',
+        name: updatedStudentName,
         bio: 'Updated bio via RESTful PUT API test',
         major: 'Computer Science & Engineering',
         learningGoals: 'Master Cloud Native Architecture'
@@ -195,7 +231,7 @@ async function runTests() {
     if (!data.success) throw new Error('Student profile update failed');
   });
 
-  // 13. POST /api/enrollments
+  // 14. POST /api/enrollments
   let newEnrollmentId = null;
   await test('POST /api/enrollments (HTTP POST Course Enrollment)', async () => {
     if (!createdCourseId) throw new Error('No target course for enrollment');
@@ -210,6 +246,33 @@ async function runTests() {
     const data = await res.json();
     if (!data.success || !data.data.id) throw new Error('Enrollment failed');
     newEnrollmentId = data.data.id;
+  });
+
+  // 15. GET & PATCH /api/faculty/students (Faculty Student Roster Management)
+  await test('GET & PATCH /api/faculty/students (Faculty Cohort Management)', async () => {
+    if (!newEnrollmentId) throw new Error('No enrollment ID for student roster check');
+    const rosterRes = await fetch(`${BASE}/api/faculty/students`, {
+      headers: { 'x-user-id': facultyTokenId || 'usr-faculty-1' }
+    });
+    const rosterData = await rosterRes.json();
+    if (!rosterData.success || !Array.isArray(rosterData.data)) {
+      throw new Error('Faculty students roster retrieval failed');
+    }
+
+    // Faculty updates student status / progress
+    const patchRes = await fetch(`${BASE}/api/faculty/students/${newEnrollmentId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': facultyTokenId || 'usr-faculty-1'
+      },
+      body: JSON.stringify({
+        progressPercentage: 100,
+        status: 'Completed'
+      })
+    });
+    const patchData = await patchRes.json();
+    if (!patchData.success) throw new Error('Faculty updating student status failed');
   });
 
   // 14. PATCH /api/courses/cs-101/progress
@@ -280,12 +343,13 @@ async function runTests() {
     }
   });
 
-  // 18. GET /academic-service/web/certificate.jsp
-  await test('GET /academic-service/web/certificate.jsp (JSP Certificate Generation)', async () => {
-    const res = await fetch(`${BASE}/academic-service/web/certificate.jsp?name=Alex+Sterling`);
+  // 20. GET /academic-service/web/certificate.jsp
+  await test('GET /academic-service/web/certificate.jsp (JSP Certificate Dynamic Name Resolution)', async () => {
+    const testName = 'Jordan Sterling Reed';
+    const res = await fetch(`${BASE}/academic-service/web/certificate.jsp?name=${encodeURIComponent(testName)}`);
     const html = await res.text();
-    if (!html.includes('Certificate of Mastery')) {
-      throw new Error('JSP certificate rendering failed');
+    if (!html.includes('Certificate of Mastery') || !html.includes(testName)) {
+      throw new Error('JSP certificate failed to reflect updated student name');
     }
   });
 

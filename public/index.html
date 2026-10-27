@@ -280,6 +280,18 @@
       </div>
 
       <div id="faculty-courses-container"></div>
+
+      <!-- Student Cohort Roster & Performance Management -->
+      <div class="faculty-students-section" style="margin-top: 32px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 24px;">
+        <div class="faculty-actions-bar" style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+          <div>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main);">👥 Student Cohort &amp; Performance Management</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Manage student enrollments, track module quiz milestones, and update academic mastery.</p>
+          </div>
+          <button class="btn-secondary" id="btn-refresh-students">🔄 Refresh Cohort</button>
+        </div>
+        <div id="faculty-students-roster-container"></div>
+      </div>
     </section>
 
     <!-- VIEW 4: Course Classroom & Video Player (All Users) -->
@@ -353,8 +365,8 @@
           <div id="xml-tree-view"></div>
         </div>
 
-        <!-- Interactive XML Schema & DTD Validator -->
-        <div class="xml-card">
+        <!-- Interactive XML Schema & DTD Validator (Restricted to Faculty/Dev) -->
+        <div class="xml-card" id="schema-validation-card">
           <h3><span>⚙️</span> Schema Validation Suite</h3>
           <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
             Verify curriculum payloads against <code>curriculum.dtd</code> rules and <code>curriculum.xsd</code> types via asynchronous AJAX.
@@ -392,10 +404,10 @@
           <p>Generate certified transcripts with GPA calculations or produce signed completion credentials.</p>
         </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
-          <a href="/academic-service/web/transcript.jsp?studentId=STU-2026-8941" target="_blank" class="btn-primary" style="background:#ffffff; color:#1e3a8a;">
+          <a id="link-view-transcript" href="/academic-service/web/transcript.jsp?studentId=STU-2026-8941" target="_blank" class="btn-primary" style="background:#ffffff; color:#1e3a8a;">
             Open Official Transcript (JSP) ↗
           </a>
-          <a href="/academic-service/web/certificate.jsp?name=Alex+Sterling" target="_blank" class="btn-secondary" style="background:rgba(255,255,255,0.2); color:#ffffff; border-color:transparent;">
+          <a id="link-view-certificate" href="/academic-service/web/certificate.jsp" target="_blank" class="btn-secondary" style="background:rgba(255,255,255,0.2); color:#ffffff; border-color:transparent;">
             View Degree Certificate (JSP) ↗
           </a>
         </div>
@@ -731,6 +743,48 @@
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
           <button type="button" class="btn-secondary" id="btn-cancel-upload-video">Cancel</button>
           <button type="submit" class="btn-primary" id="btn-confirm-upload-video">Confirm &amp; Publish Video</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ==========================================
+       Faculty Quiz Builder Modal
+       ========================================== -->
+  <dialog id="quiz-builder-modal" class="custom-modal">
+    <div class="modal-header">
+      <h3 id="quiz-builder-title">📝 Prepare Module Assessment Quiz</h3>
+      <button id="btn-close-quiz-builder" class="btn-close-modal" aria-label="Close dialog">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-quiz-builder">
+        <input type="hidden" id="quiz-builder-course-id">
+        <input type="hidden" id="quiz-builder-module-id">
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Target Module</label>
+          <div id="quiz-builder-target-display" style="padding:10px 14px; background:var(--bg-secondary); border-radius:var(--radius-md); font-weight:700; font-size:13px; color:var(--primary);">
+            Full-Stack Web Architectures &bull; Module 1
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label for="quiz-title-input" style="font-weight:600; font-size:13px;">Assessment Title</label>
+          <input type="text" id="quiz-title-input" class="form-control" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-surface); color:var(--text-main);" placeholder="e.g. Module Practical Competency Assessment" required>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h4 style="font-size:14px; font-weight:700;">Assessment Questions</h4>
+          <button type="button" class="btn-secondary" id="btn-add-quiz-question" style="font-size:12px; padding:4px 10px;">➕ Add Question</button>
+        </div>
+
+        <div id="quiz-questions-list" style="display:flex; flex-direction:column; gap:16px; max-height:360px; overflow-y:auto; padding-right:6px;">
+          <!-- Questions dynamically injected here -->
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid var(--border-color); padding-top:14px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-quiz-builder">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-save-quiz">Save &amp; Publish Quiz</button>
         </div>
       </form>
     </div>

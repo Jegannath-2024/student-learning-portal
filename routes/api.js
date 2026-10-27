@@ -304,6 +304,95 @@ router.patch('/courses/:id/modules/:moduleId/lessons/:lessonId/video', async (re
   }
 });
 
+// GET /api/courses/:id/modules/:moduleId/quiz - Retrieve module assessment quiz
+router.get('/courses/:id/modules/:moduleId/quiz', async (req, res) => {
+  try {
+    const quiz = await store.getModuleQuiz(req.params.id, req.params.moduleId);
+    if (!quiz) {
+      return res.status(404).json({ success: false, error: 'Module or quiz not found' });
+    }
+    return res.status(200).json({ success: true, data: quiz });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/courses/:id/modules/:moduleId/quiz - Faculty preparing and publishing module quiz
+router.post('/courses/:id/modules/:moduleId/quiz', async (req, res) => {
+  try {
+    const { title, questions } = req.body;
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one valid question is required' });
+    }
+
+    const savedQuiz = await store.saveModuleQuiz(req.params.id, req.params.moduleId, {
+      title: title || 'Module Practical Assessment',
+      questions
+    });
+
+    if (!savedQuiz) {
+      return res.status(404).json({ success: false, error: 'Target course or module not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Module quiz saved and published to students successfully!',
+      data: savedQuiz
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/faculty/students - Faculty viewing enrolled students in their courses
+router.get('/faculty/students', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || 'usr-faculty-1';
+    const user = await store.getUserById(userId);
+    const facultyEmail = user ? user.email : 'faculty@edusphere.edu';
+    const facultyName = user ? user.name : 'Dr. Sarah Mitchell';
+
+    const students = await store.getStudentsByFaculty(facultyEmail, facultyName);
+    return res.status(200).json({ success: true, count: students.length, data: students });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /api/faculty/students/:enrollmentId - Faculty managing student progress and status
+router.patch('/faculty/students/:enrollmentId', async (req, res) => {
+  try {
+    const updated = await store.updateFacultyStudentStatus(req.params.enrollmentId, req.body);
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Student enrollment not found' });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Student record updated successfully!',
+      data: updated
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/faculty/students/:enrollmentId - Faculty dropping student from course
+router.delete('/faculty/students/:enrollmentId', async (req, res) => {
+  try {
+    const deleted = await store.dropEnrollment(req.params.enrollmentId);
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Enrollment not found' });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Student enrollment dropped from cohort.',
+      data: deleted
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/faculty/stats', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
@@ -372,9 +461,12 @@ router.get('/enrollments', async (req, res) => {
     const courses = await store.getCourses();
 
     const populated = enrollments.map(enr => {
-      const course = courses.find(c => c.id === enr.courseId);
+      const enrObj = enr.toObject ? enr.toObject() : { ...enr };
+      const course = courses.find(c => c.id === enrObj.courseId);
+      const rawPct = Number(enrObj.progressPercentage);
       return {
-        ...enr,
+        ...enrObj,
+        progressPercentage: Number.isFinite(rawPct) ? Math.max(0, Math.min(100, Math.round(rawPct))) : 0,
         course: course || null
       };
     });
@@ -400,7 +492,12 @@ router.post('/enrollments', async (req, res) => {
     }
 
     const enrollment = await store.enrollCourse(courseId, studentId);
-    return res.status(201).json({ success: true, data: enrollment, message: `Successfully enrolled in ${course.title}!` });
+    const enrObj = enrollment.toObject ? enrollment.toObject() : { ...enrollment };
+    const rawPct = Number(enrObj.progressPercentage);
+    enrObj.progressPercentage = Number.isFinite(rawPct) ? Math.max(0, Math.min(100, Math.round(rawPct))) : 0;
+    enrObj.course = course;
+
+    return res.status(201).json({ success: true, data: enrObj, message: `Successfully enrolled in "${course.title}"!` });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
